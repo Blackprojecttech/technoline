@@ -1,0 +1,238 @@
+.animated-badge {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+  animation: pulse 2s infinite;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 10;
+}
+
+.badge-icon {
+  font-size: 10px;
+  animation: bounce 1.5s infinite;
+  color: white;
+}
+
+.badge-count {
+  font-size: 10px;
+  font-weight: bold;
+  min-width: 12px;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(255, 77, 79, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-2px);
+  }
+  60% {
+    transform: translateY(-1px);
+  }
+}
+
+/* Анимация для темной темы в сайдбаре */
+.ant-layout-sider .animated-badge {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.4);
+  position: relative;
+  z-index: 1000;
+}
+
+.ant-layout-sider .badge-icon {
+  color: white;
+}
+
+.ant-layout-sider .badge-count {
+  color: white;
+}
+
+/* Специальные стили для сайдбара */
+.ant-layout-sider .ant-badge {
+  position: relative;
+  z-index: 1000;
+}
+
+.ant-layout-sider .ant-badge-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 1001;
+}
+
+/* Анимация для восклицательного знака в сайдбаре */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+    background: #ff4d4f;
+  }
+  25%, 75% {
+    opacity: 0.7;
+    background: #ff7875;
+  }
+  100% {
+    opacity: 1;
+    background: #ff4d4f;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes alert {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(-1px);
+  }
+}
+
+/* Стили для счетчика заказов в сайдбаре */
+.ant-layout-sider .order-count-badge {
+  background: #ff4d4f;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+  font-weight: bold;
+}
+
+/* Стили для иконки восклицания в сайдбаре */
+.exclamation-icon {
+  animation: rotate 2s infinite, alert 1.5s infinite;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1000;
+}
+
+/* Стили для счетчика рядом с иконкой восклицания */
+.pending-count {
+  background: #ff4d4f;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: alert 2s infinite, bounce 1s infinite;
+  font-weight: bold;
+  line-height: 1;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 1000;
+}
+
+/* Стили для контейнера иконки в сайдбаре */
+.ant-layout-sider .flex.items-center {
+  min-width: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 999;
+}
+
+
+
+/* Дополнительные стили для темной темы сайдбара */
+.ant-layout-sider .pending-count {
+  background: #ff4d4f;
+  color: white;
+  animation: alert 2s infinite, bounce 1s infinite;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  position: relative;
+  z-index: 1000;
+}
+
+.ant-layout-sider .exclamation-icon {
+  color: #ff4d4f !important;
+  animation: rotate 2s infinite, alert 1.5s infinite;
+  position: relative;
+  z-index: 1000;
+}
+
+ 
