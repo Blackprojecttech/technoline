@@ -45,7 +45,17 @@ export const io = new SocketIOServer(server, {
       'http://localhost:3200',
       'http://localhost:3201',
       'http://localhost:3202',
-      'http://localhost:3203'
+      'http://localhost:3203',
+      'http://localhost:50438', // vercel dev
+      'https://*.vercel.app', // vercel production
+      'https://*.railway.app', // railway
+      'https://*.render.com', // render
+      /^https:\/\/.*\.vercel\.app$/, // any vercel subdomain
+      /^https:\/\/.*\.railway\.app$/, // any railway subdomain
+      /^https:\/\/.*\.render\.com$/, // any render subdomain
+      /^http:\/\/localhost:\d+$/, // any localhost port
+      /^https:\/\/.*\.netlify\.app$/, // netlify
+      /^https:\/\/.*\.netlify\.com$/ // netlify custom domains
     ],
     credentials: true
   }
@@ -81,7 +91,17 @@ app.use(cors({
     'http://localhost:3200', // admin panel
     'http://localhost:3201', // admin panel
     'http://localhost:3202', // admin panel
-    'http://localhost:3203'  // admin panel
+    'http://localhost:3203', // admin panel
+    'http://localhost:50438', // vercel dev
+    'https://*.vercel.app', // vercel production
+    'https://*.railway.app', // railway
+    'https://*.render.com', // render
+    /^https:\/\/.*\.vercel\.app$/, // any vercel subdomain
+    /^https:\/\/.*\.railway\.app$/, // any railway subdomain
+    /^https:\/\/.*\.render\.com$/, // any render subdomain
+    /^http:\/\/localhost:\d+$/, // any localhost port
+    /^https:\/\/.*\.netlify\.app$/, // netlify
+    /^https:\/\/.*\.netlify\.com$/ // netlify custom domains
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],

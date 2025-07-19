@@ -1,154 +1,97 @@
-# 🚀 Деплой TechnoLine Store через Vercel
+# 🚀 Руководство по деплою на Vercel
 
-## 📋 Быстрый старт
+## Шаг 1: Подготовка
 
-### 1. Подготовка
-
-Проект уже подготовлен к деплою:
-- ✅ Зависимости установлены
-- ✅ Сборка работает
-- ✅ Git репозиторий настроен
-
-### 2. Создание GitHub репозитория
-
-1. **Создайте репозиторий на GitHub**:
-   - Зайдите на https://github.com
-   - Нажмите "New repository"
-   - Назовите репозиторий `technoline-store`
-   - Сделайте его публичным или приватным
-
-2. **Загрузите код в GitHub**:
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/technoline-store.git
-   git push -u origin main
-   ```
-
-### 3. Настройка MongoDB Atlas
-
-1. **Создайте аккаунт на MongoDB Atlas**:
-   - Зайдите на https://cloud.mongodb.com
-   - Создайте бесплатный аккаунт
-
-2. **Создайте кластер**:
-   - Выберите "Free" план
-   - Выберите регион (например, Europe)
-   - Нажмите "Create"
-
-3. **Создайте пользователя базы данных**:
-   - В разделе "Database Access" создайте пользователя
-   - Запомните логин и пароль
-
-4. **Получите строку подключения**:
-   - В разделе "Database" нажмите "Connect"
-   - Выберите "Connect your application"
-   - Скопируйте строку подключения
-
-### 4. Деплой через Vercel
-
-#### Вариант A: Автоматический деплой
-
+### Установка Vercel CLI
 ```bash
-# Запустите скрипт деплоя
-./deploy-vercel.sh
+npm install -g vercel
 ```
 
-#### Вариант B: Ручной деплой
+### Авторизация в Vercel
+```bash
+vercel login
+```
 
-1. **Деплой Backend**:
-   ```bash
-   cd backend
-   vercel --prod
-   ```
+## Шаг 2: Деплой Backend
 
-2. **Деплой Frontend**:
-   ```bash
-   cd frontend
-   vercel --prod
-   ```
+```bash
+cd backend
+vercel --prod
+```
 
-3. **Деплой Admin**:
-   ```bash
-   cd admin
-   npm run build
-   vercel --prod
-   ```
+После деплоя backend, скопируйте URL (например: `https://your-backend.vercel.app`)
 
-### 5. Настройка переменных окружения
+## Шаг 3: Настройка переменных окружения
 
-После деплоя настройте переменные в Vercel Dashboard:
+В Vercel Dashboard для backend проекта добавьте:
 
-#### Backend переменные:
-```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/technoline-store
+```
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/technoline
 JWT_SECRET=your-super-secret-jwt-key
-NODE_ENV=production
-FRONTEND_URL=https://your-frontend-domain.vercel.app
-ADMIN_URL=https://your-admin-domain.vercel.app
+CDEK_CLIENT_ID=your-cdek-client-id
+CDEK_CLIENT_SECRET=your-cdek-client-secret
 ```
 
-#### Frontend переменные:
-```env
-NEXT_PUBLIC_API_URL=https://your-backend-domain.vercel.app/api
-NEXT_PUBLIC_YANDEX_API_KEY=your_yandex_api_key
-NEXT_PUBLIC_CDEK_WIDGET_DEBUG=false
-```
-
-#### Admin переменные:
-```env
-VITE_API_URL=https://your-backend-domain.vercel.app/api
-```
-
-### 6. Создание первого администратора
-
-После деплоя создайте первого администратора:
+## Шаг 4: Деплой Frontend
 
 ```bash
-curl -X POST https://your-backend-domain.vercel.app/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "admin123",
-    "firstName": "Admin",
-    "lastName": "User",
-    "role": "admin"
-  }'
+cd frontend
+# Создайте .env.production с URL backend
+echo "NEXT_PUBLIC_API_URL=https://your-backend.vercel.app/api" > .env.production
+vercel --prod
 ```
 
-## 🔧 Устранение проблем
+## Шаг 5: Деплой Admin Panel
 
-### Проблема: "Account not found"
-- Убедитесь, что backend запущен
-- Проверьте подключение к MongoDB
-- Создайте первого пользователя
-
-### Проблема: "Port already in use"
 ```bash
-# Остановите процесс на порту 5000
-lsof -ti:5000 | xargs kill -9
+cd admin
+# Создайте .env.production с URL backend
+echo "VITE_API_URL=https://your-backend.vercel.app/api" > .env.production
+npm run build
+vercel --prod
 ```
 
-### Проблема: "Build failed"
-- Проверьте логи в Vercel Dashboard
-- Убедитесь, что все зависимости установлены
-- Проверьте переменные окружения
+## Шаг 6: Проверка
 
-## 📊 Мониторинг
+1. Откройте frontend URL
+2. Попробуйте зарегистрироваться
+3. Проверьте admin panel
 
-### Проверка статуса:
-- **Backend**: https://your-backend-domain.vercel.app/api/health
-- **Frontend**: https://your-frontend-domain.vercel.app
-- **Admin**: https://your-admin-domain.vercel.app
+## Полезные команды
 
-### Логи:
-- Vercel Dashboard → Project → Functions → View Function Logs
+```bash
+# Посмотреть все проекты
+vercel ls
 
-## 🎯 Результат
+# Посмотреть логи
+vercel logs
 
-После успешного деплоя у вас будет:
-- **Frontend**: https://your-project.vercel.app
-- **Admin**: https://your-admin.vercel.app
-- **Backend**: https://your-backend.vercel.app
+# Обновить переменные окружения
+vercel env add MONGODB_URI
+```
 
-## 🚀 Готово!
+## Структура URL после деплоя
 
-Ваша платформа TechnoLine Store будет доступна в интернете! 
+- **Frontend**: `https://your-frontend.vercel.app`
+- **Backend**: `https://your-backend.vercel.app`
+- **Admin**: `https://your-admin.vercel.app`
+
+## Troubleshooting
+
+### Проблема с CORS
+Убедитесь, что в backend настроен CORS для всех доменов Vercel:
+
+```javascript
+app.use(cors({
+  origin: [
+    'https://*.vercel.app',
+    'https://*.railway.app',
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*\.railway\.app$/
+  ],
+  credentials: true
+}));
+```
+
+### Проблема с MongoDB
+Убедитесь, что MongoDB Atlas настроен для доступа с любых IP (0.0.0.0/0) 
