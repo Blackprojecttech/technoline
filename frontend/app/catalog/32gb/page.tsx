@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: '32Gb - качественные товары по выгодным ценам в Techno-line.store',
 };
 
-export default function 32GbPage() {
+export default function ThirtyTwoGbPage() {
   return <CategoryPage slug="32gb" />;
 }

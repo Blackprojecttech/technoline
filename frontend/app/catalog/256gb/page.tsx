@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: '256Gb - качественные товары по выгодным ценам в Techno-line.store',
 };
 
-export default function 256GbPage() {
+export default function TwoHundredFiftySixGbPage() {
   return <CategoryPage slug="256gb" />;
 }
