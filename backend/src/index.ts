@@ -33,7 +33,7 @@ import cdekRoutes from './routes/cdek';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 // --- Socket.IO ---
 const server = http.createServer(app);
