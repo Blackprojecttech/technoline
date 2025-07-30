@@ -2,15 +2,35 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI, userAPI, ordersAPI, setAuthToken, getAuthToken, removeAuthToken } from '@/lib/api';
+import { validateAndCleanToken } from '@/utils/tokenValidator';
+
+interface ProfileAddress {
+  id: string;
+  name: string;
+  address: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  isDefault?: boolean;
+}
 
 interface User {
   _id: string;
   firstName: string;
   lastName: string;
+  middleName?: string;
   email: string;
   phone?: string;
   address?: string;
+  addresses?: ProfileAddress[];
   role: string;
+  authProvider?: 'google' | 'yandex' | 'telegram' | 'local';
+  linkedAccounts?: {
+    google?: boolean;
+    yandex?: boolean;
+    telegram?: boolean;
+  };
 }
 
 interface Order {
@@ -48,9 +68,13 @@ interface AuthContextType {
   register: (data: {
     firstName: string;
     lastName: string;
+    middleName?: string;
     email: string;
     phone?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     password: string;
   }) => Promise<void>;
   logout: () => void;
@@ -84,16 +108,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Проверка токена при загрузке
   useEffect(() => {
-    const token = getAuthToken();
-    console.log('🔑 Проверка токена при загрузке:', {
-      tokenExists: !!token,
-      tokenLength: token?.length
-    });
-    if (token) {
-      refreshUser();
-    } else {
-      setIsLoading(false);
-    }
+    const initAuth = async () => {
+      console.log('🔑 Получение токена:', {
+        tokenExists: !!getAuthToken(),
+        tokenLength: getAuthToken()?.length
+      });
+      
+      const validToken = await validateAndCleanToken();
+      if (validToken) {
+        refreshUser();
+      } else {
+        setIsLoading(false);
+      }
+    };
+    
+    initAuth();
   }, []);
 
   // Автоматическое обновление заказов каждые 30 секунд
@@ -115,8 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         userId: response._id,
         tokenLength: response.token?.length
       });
-      
-      setAuthToken(response.token);
+      setAuthToken(response.token); // <--- Исправление: сохраняем токен после входа
       setUser({
         _id: response._id,
         firstName: response.firstName,
@@ -124,6 +152,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: response.email,
         phone: response.phone,
         role: response.role,
+        addresses: response.addresses || [],
+        authProvider: (response as any).authProvider,
+        linkedAccounts: (response as any).linkedAccounts,
       });
       await refreshOrders();
     } catch (error) {
@@ -135,9 +166,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (data: {
     firstName: string;
     lastName: string;
+    middleName?: string;
     email: string;
     phone?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     password: string;
   }) => {
     try {
@@ -147,9 +182,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         _id: response._id,
         firstName: response.firstName,
         lastName: response.lastName,
+        middleName: response.middleName,
         email: response.email,
         phone: response.phone,
         role: response.role,
+        addresses: response.addresses || [],
+        authProvider: (response as any).authProvider,
+        linkedAccounts: (response as any).linkedAccounts,
       });
       await refreshOrders();
     } catch (error) {
@@ -193,6 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: response.email,
         phone: response.phone,
         role: response.role,
+        addresses: response.addresses || [],
       });
       await refreshOrders(); // Обновляем заказы после обновления профиля
     } catch (error) {
@@ -203,25 +243,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshUser = async () => {
     try {
       const token = getAuthToken();
-      console.log('🔄 Обновление пользователя:', {
-        tokenExists: !!token,
-        tokenLength: token?.length
-      });
-      
       if (!token) {
-        console.log('❌ Нет токена для обновления пользователя');
         setIsLoading(false);
         return;
       }
-
       const userData = await userAPI.getProfile(token);
-      console.log('✅ Пользователь обновлен:', userData);
-      setUser(userData);
+      setUser({
+        _id: userData._id,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phone: userData.phone,
+        role: userData.role,
+        addresses: userData.addresses || [],
+        authProvider: (userData as any).authProvider,
+        linkedAccounts: (userData as any).linkedAccounts,
+      });
       await refreshOrders(); // Загружаем заказы после обновления пользователя
-    } catch (error) {
-      console.error('❌ Ошибка обновления пользователя:', error);
-      removeAuthToken();
-      setUser(null);
+    } catch (error: any) {
+      // --- Исправлено: logout только при ошибке авторизации ---
+      const message = error?.message?.toLowerCase() || '';
+      if (
+        message.includes('токен') ||
+        message.includes('401') ||
+        message.includes('авторизован') ||
+        message.includes('недействительный') ||
+        message.includes('not found')
+      ) {
+        removeAuthToken();
+        setUser(null);
+        // Можно добавить уведомление: "Сессия истекла, войдите заново"
+      } else {
+        // Ошибка сети, CORS и т.д. — НЕ делаем logout!
+        // Можно показать уведомление: "Нет соединения с сервером, попробуйте позже"
+        // Например: setError('Нет соединения с сервером, попробуйте позже');
+        console.error('Ошибка соединения или временная ошибка:', error);
+      }
     } finally {
       setIsLoading(false);
     }

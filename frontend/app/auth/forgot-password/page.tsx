@@ -1,19 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import MobileNavigation from '@/components/layout/MobileNavigation';
 
 export default function ForgotPasswordPage() {
-  const { forgotPassword } = useAuth();
+  const { forgotPassword, user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState('');
+
+  // Редирект для уже авторизованных пользователей
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/profile');
+    }
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,10 +40,34 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  // Показываем загрузку пока проверяется авторизация
+  if (authLoading) {
+    return (
+      <>
+        <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+        <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверяем авторизацию...</p>
+          </div>
+        </div>
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Если пользователь авторизован, не показываем форму восстановления пароля (редирект произойдет через useEffect)
+  if (user) {
+    return null;
+  }
+
   return (
     <>
-      <Header />
-      <div className="min-h-screen bg-gray-50 pt-32">
+      <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+      <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -150,7 +184,12 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* Футер - скрыт на мобильных */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+      
+      <MobileNavigation />
     </>
   );
 } 

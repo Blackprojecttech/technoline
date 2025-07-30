@@ -1,0 +1,303 @@
+/* Анимации для страницы просмотра заказа */
+.order-detail-container {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.order-header {
+  animation: slideInFromTop 0.8s ease-out;
+}
+
+.order-status-card {
+  animation: slideInFromLeft 0.8s ease-out 0.2s both;
+}
+
+.order-items-card {
+  animation: slideInFromLeft 0.8s ease-out 0.4s both;
+}
+
+.order-sidebar {
+  animation: slideInFromRight 0.8s ease-out 0.6s both;
+}
+
+.tracking-section {
+  animation: slideInFromBottom 0.8s ease-out 0.8s both;
+}
+
+/* Анимации появления */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Анимации для статусов */
+.status-badge {
+  animation: pulse 2s infinite;
+}
+
+.status-badge.completed {
+  animation: none;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  }
+}
+
+/* Анимации для карточек */
+.order-card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Анимации для трекинга */
+.tracking-timeline {
+  position: relative;
+}
+
+.tracking-timeline::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #1890ff 0%, #52c41a 100%);
+  animation: timelineGrow 1s ease-out;
+}
+
+@keyframes timelineGrow {
+  from {
+    height: 0;
+  }
+  to {
+    height: 100%;
+  }
+}
+
+.tracking-item {
+  animation: slideInFromLeft 0.6s ease-out;
+  margin-left: 40px;
+  position: relative;
+}
+
+.tracking-item::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #1890ff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px #1890ff;
+  animation: dotPulse 2s infinite;
+}
+
+.tracking-item.completed::before {
+  background: #52c41a;
+  box-shadow: 0 0 0 3px #52c41a;
+  animation: none;
+}
+
+@keyframes dotPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(24, 144, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+  }
+}
+
+/* Анимации для кнопок */
+.action-button {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Анимации для загрузки */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Анимации для уведомлений */
+.notification {
+  animation: slideInFromRight 0.5s ease-out;
+}
+
+/* Стили для мобильных устройств */
+@media (max-width: 768px) {
+  .order-detail-container {
+    padding: 16px;
+  }
+  
+  .order-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .order-card {
+    margin-bottom: 16px;
+  }
+}
+
+/* Градиентные фоны */
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.gradient-bg-secondary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+/* Стили для таблицы товаров */
+.products-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.products-table .ant-table-thead > tr > th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.products-table .ant-table-tbody > tr:hover > td {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+/* Стили для модального окна */
+.update-modal .ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.update-modal .ant-modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+/* Анимации для иконок */
+.icon-animate {
+  transition: all 0.3s ease;
+}
+
+.icon-animate:hover {
+  transform: scale(1.1);
+}
+
+/* Стили для статусов доставки */
+.delivery-status {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.delivery-status.pending {
+  background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+  color: white;
+}
+
+.delivery-status.processing {
+  background: linear-gradient(135deg, #42a5f5 0%, #1976d2 100%);
+  color: white;
+}
+
+.delivery-status.shipped {
+  background: linear-gradient(135deg, #7c4dff 0%, #6200ea 100%);
+  color: white;
+}
+
+.delivery-status.delivered {
+  background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%);
+  color: white;
+}
+
+.delivery-status.cancelled {
+  background: linear-gradient(135deg, #ef5350 0%, #d32f2f 100%);
+  color: white;
+} 

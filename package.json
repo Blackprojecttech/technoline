@@ -17,6 +17,7 @@
     "start": "cd backend && npm start"
   },
   "devDependencies": {
+    "@types/lodash.debounce": "^4.0.9",
     "@types/react-input-mask": "^3.0.6",
     "chokidar": "^4.0.3",
     "concurrently": "^8.2.2"
@@ -34,6 +35,9 @@
   "dependencies": {
     "glob": "^11.0.3",
     "lodash.debounce": "^4.0.8",
-    "react-input-mask": "^2.0.4"
+    "mongoose": "^8.16.4",
+    "react-input-mask": "^2.0.4",
+    "react-phone-input-2": "^2.15.1",
+    "react-quill": "^2.0.0"
   }
 }

@@ -1,309 +1,145 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
 import Layout from '@/components/layout/Layout';
-import CategoryTree from '@/components/layout/CategoryTree';
-import { ShoppingBag, Star, Truck, Shield, CreditCard, Headphones, Smartphone, Laptop, Tablet, Watch } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useCategories } from '@/hooks/useCategories';
-
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  children?: Category[];
-}
+import CategoryProducts from '@/components/CategoryProducts';
+import CatalogFilters, { CatalogFiltersState } from '@/components/CatalogFilters';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function CatalogPage() {
-  const { categories, loading, error } = useCategories();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<CatalogFiltersState>({
+    searchQuery: '',
+    priceMin: '',
+    priceMax: '',
+    inStock: true,
+    brand: '',
+    rating: '',
+    onlyDiscount: false,
+    colors: [],
+  });
+  const [products, setProducts] = useState<any[]>([]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+  // Обработка реферальной ссылки
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      // Отправляем запрос для отслеживания клика
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/referrals/track?ref=${ref}`, {
+        method: 'GET',
+        credentials: 'include' // Включаем куки
+      })
+        .then(response => {
+          if (response.ok) {
+            console.log('✅ Реферальный клик отслежен в каталоге:', ref);
+            // Дополнительно сохраняем код в localStorage для надежности
+            localStorage.setItem('referralCode', ref);
+          } else {
+            console.error('❌ Ошибка отслеживания клика в каталоге:', response.status);
+          }
+        })
+        .catch(error => {
+          console.error('Ошибка при отслеживании реферального клика:', error);
+        });
     }
-  };
+  }, [searchParams]);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5
-      }
-    }
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut"
-      }
-    },
-    hover: {
-      scale: 1.05,
-      transition: {
-        duration: 0.3
-      }
-    }
-  };
-
-  const popularCategories = [
-    {
-      icon: Smartphone,
-      title: "Мобильные телефоны",
-      description: "Широкий выбор смартфонов от ведущих производителей",
-      color: "from-blue-500 to-purple-600",
-      delay: 0.1,
-      slug: "mobilnye-telefony"
-    },
-    {
-      icon: Laptop,
-      title: "Ноутбуки",
-      description: "Игровые, бизнес и ультрабуки для любых задач",
-      color: "from-green-500 to-blue-600",
-      delay: 0.2,
-      slug: "noutbuki"
-    },
-    {
-      icon: Tablet,
-      title: "Планшеты",
-      description: "iPad, Android и Windows планшеты для работы и развлечений",
-      color: "from-orange-500 to-red-600",
-      delay: 0.3,
-      slug: "planshety"
-    },
-    {
-      icon: Watch,
-      title: "Умные часы",
-      description: "Современные гаджеты для здоровья и стиля",
-      color: "from-purple-500 to-pink-600",
-      delay: 0.4,
-      slug: "umnye-chasy"
-    },
-    {
-      icon: Headphones,
-      title: "Аксессуары",
-      description: "Наушники, чехлы, зарядные устройства и другие аксессуары",
-      color: "from-teal-500 to-cyan-600",
-      delay: 0.5,
-      slug: "aksessuary"
-    },
-    {
-      icon: Laptop,
-      title: "Компьютерное оборудование",
-      description: "Мониторы, клавиатуры, мыши и другие комплектующие",
-      color: "from-indigo-500 to-blue-600",
-      delay: 0.6,
-      slug: "kompyuternoe-oborudovanie"
-    }
+  // Цветовые и технические синонимы для фильтрации моделей (как в [slug]/page.tsx)
+  const COLOR_SYNONYMS = [
+    'черный', 'black', 'midnight', 'phantom black', 'graphite',
+    'белый', 'white',
+    'серебристый', 'silver',
+    'синий', 'blue', 'pacific blue', 'navy', 'dark blue',
+    'красный', 'red',
+    'зеленый', 'green',
+    'серый', 'gray', 'grey', 'space gray', 'space grey',
+    'золотой', 'gold', 'golden', 'starlight',
+    'розовый', 'pink', 'rose gold',
+    'фиолетовый', 'purple', 'violet', 'deep purple', 'lavender',
+    'оранжевый', 'orange',
+  ];
+  const TECH_SYNONYMS = [
+    'usb', 'magsafe', 'bluetooth', 'case', 'charging', 'wireless', 'lightning', 'type-c', 'type c', 'typec', 'c', 'with', 'and', 'наушники', 'гарнитура', 'наушник', 'чехол', 'зарядка', 'корпус', 'адаптер', 'адаптеры', 'провод', 'кабель', 'mic', 'microphone', 'микрофон', 'аккумулятор', 'батарея', 'power', 'protection', 'защита', 'plus', 'premium', 'original', 'оригинал', 'oem', 'copy', 'копия', 'новый', 'new', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010'
   ];
 
-  // Функция для получения реальных популярных категорий
-  const getPopularCategories = () => {
-    if (!categories.length) return popularCategories;
-    
-    // Берем первые 6 категорий из базы данных
-    const dbCategories = categories.slice(0, 6).map((category, index) => {
-      const iconMap: { [key: string]: any } = {
-        'mobilnye-telefony': Smartphone,
-        'noutbuki': Laptop,
-        'planshety': Tablet,
-        'umnye-chasy': Watch,
-        'aksessuary': Headphones,
-        'kompyuternoe-oborudovanie': Laptop,
-        'iphone': Smartphone,
-        'samsung': Smartphone,
-        'xiaomi': Smartphone,
-        'honor': Smartphone,
-        'default': ShoppingBag
-      };
-
-      const colorMap = [
-        "from-blue-500 to-purple-600",
-        "from-green-500 to-blue-600", 
-        "from-orange-500 to-red-600",
-        "from-purple-500 to-pink-600",
-        "from-teal-500 to-cyan-600",
-        "from-indigo-500 to-blue-600"
-      ];
-
-      const Icon = iconMap[category.slug] || iconMap['default'];
-      const color = colorMap[index % colorMap.length];
-
-      return {
-        icon: Icon,
-        title: category.name,
-        description: category.description || `Товары в категории ${category.name}`,
-        color,
-        delay: (index + 1) * 0.1,
-        slug: category.slug
-      };
-    });
-
-    // Если категорий из базы меньше 6, добавляем статичные
-    if (dbCategories.length < 6) {
-      const remainingCount = 6 - dbCategories.length;
-      const staticCategories = popularCategories.slice(0, remainingCount);
-      return [...dbCategories, ...staticCategories];
+  // Получаем уникальные модели из товаров
+  const modelButtons = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    const models = products.map(p => {
+      let name = p.name;
+      [...COLOR_SYNONYMS, ...TECH_SYNONYMS].forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        name = name.replace(regex, '');
+      });
+      name = name.replace(/[\(\)\[\]\{\}\-_,.?!:;"'`~@#$%^&*+=<>\/\\|]/g, '');
+      name = name.replace(/\s{2,}/g, ' ').replace(/^[,\s]+|[,\s]+$/g, '');
+      const match = name.match(/Apple\s+([A-Za-z0-9 ]+(?: [A-Za-z0-9]+)?)/i);
+      if (match && match[1]) return toTitleCase(match[1].trim());
+      const airpods = name.match(/Airpods[^,]*/i);
+      if (airpods) return toTitleCase(airpods[0].trim());
+      const earpods = name.match(/Earpods[^,]*/i);
+      if (earpods) return toTitleCase(earpods[0].trim());
+      return null;
+    }).filter(Boolean);
+    function toTitleCase(str: string) {
+      return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     }
-
-    return dbCategories;
-  };
-
-  const benefits = [
-    { icon: Shield, text: "Официальная гарантия на все товары", delay: 0.1 },
-    { icon: Truck, text: "Быстрая доставка по всей России", delay: 0.2 },
-    { icon: Star, text: "Профессиональная консультация", delay: 0.3 },
-    { icon: CreditCard, text: "Удобные способы оплаты", delay: 0.4 }
-  ];
+    return Array.from(new Set(models));
+  }, [products]);
 
   return (
     <Layout>
-      <div className="pt-32 pb-16">
-        <motion.div 
-          className="container mx-auto px-4 py-12"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div 
-            className="max-w-6xl mx-auto"
-            variants={itemVariants}
-          >
-            {/* Hero Section */}
-            <motion.div 
-              className="text-center mb-16"
-              variants={itemVariants}
-            >
-              <motion.h1 
-                className="text-5xl lg:text-6xl font-bold text-secondary-800 mb-6"
-                initial={{ opacity: 0, y: -30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
+      <div className="container mx-auto px-4 py-4 md:py-8 flex gap-8 pt-16 md:pt-40">
+        {/* Фильтры слева - скрыты на мобильных */}
+        <aside className="w-72 shrink-0 hidden lg:block">
+          <div className="bg-white rounded-2xl shadow p-6 mb-6">
+            {products.length > 0 && (
+              <CatalogFilters filters={filters} onChange={setFilters} hideBrandFilter={true} products={products} />
+            )}
+          </div>
+        </aside>
+        
+        {/* Правая часть: товары */}
+        <section className="flex-1 min-w-0">
+          {/* Мобильная кнопка фильтров */}
+          <div className="lg:hidden mb-4">
+            <button className="w-full btn-secondary rounded-xl py-3 text-left flex items-center justify-between">
+              <span>Фильтры</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707v4.586a1 1 0 01-.293.707l-2 2A1 1 0 0111 21v-6.586a1 1 0 00-.293-.707L4.293 7.293A1 1 0 014 6.586V4z" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Быстрые кнопки фильтрации по моделям */}
+          {modelButtons.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4 md:mb-6">
+              <button
+                key="all-models"
+                className={`px-3 md:px-4 py-2 md:py-1 rounded-xl md:rounded-full border text-xs md:text-sm font-medium transition-colors duration-200
+                  ${!filters.searchQuery ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-primary-50'}`}
+                onClick={() => setFilters(f => ({ ...f, searchQuery: '' }))}
               >
-                Каталог товаров
-              </motion.h1>
-              <motion.p 
-                className="text-xl text-secondary-600 max-w-3xl mx-auto leading-relaxed"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                Откройте мир современных технологий с нашим обширным каталогом товаров
-              </motion.p>
-            </motion.div>
-
-            {/* Popular Categories Grid */}
-            <motion.div 
-              className="mb-16"
-              variants={itemVariants}
-            >
-              <motion.h2 
-                className="text-3xl font-bold text-secondary-800 mb-8 text-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              >
-                Популярные категории
-              </motion.h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getPopularCategories().map((category, index) => (
-                  <motion.div
-                    key={index}
-                    className="group cursor-pointer"
-                    variants={cardVariants}
-                    whileHover="hover"
-                    initial="hidden"
-                    animate="visible"
-                    transition={{ delay: category.delay }}
-                  >
-                    <Link href={`/catalog/${category.slug}`}>
-                      <div className={`bg-white border border-light-200 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2`}>
-                        <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                          <category.icon className="text-white text-2xl" />
-                        </div>
-                        <h3 className="text-xl font-bold text-secondary-800 mb-2 group-hover:text-primary-600 transition-colors duration-300">
-                          {category.title}
-                        </h3>
-                        <p className="text-secondary-600 text-sm leading-relaxed">
-                          {category.description}
-                        </p>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Benefits Section */}
-            <motion.div 
-              className="mb-16"
-              variants={itemVariants}
-            >
-              <motion.h2 
-                className="text-3xl font-bold text-secondary-800 mb-8 text-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                Почему выбирают нас
-              </motion.h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {benefits.map((benefit, index) => (
-                  <motion.div
-                    key={index}
-                    className="text-center"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: benefit.delay }}
-                  >
-                    <div className="bg-white border border-light-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                        <benefit.icon className="text-white text-xl" />
-                      </div>
-                      <p className="text-secondary-700 font-medium">
-                        {benefit.text}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Category Tree Section */}
-            <motion.div 
-              className="mb-16"
-              variants={itemVariants}
-            >
-              <motion.h2 
-                className="text-3xl font-bold text-secondary-800 mb-8 text-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-              >
-                Полный каталог
-              </motion.h2>
-              
-              <div className="bg-white border border-light-200 rounded-2xl p-8 shadow-lg">
-                <CategoryTree />
-              </div>
-            </motion.div>
-          </motion.div>
-        </motion.div>
+                Все
+              </button>
+              {modelButtons.map(model => (
+                <button
+                  key={model}
+                  className={`px-3 md:px-4 py-2 md:py-1 rounded-xl md:rounded-full border text-xs md:text-sm font-medium transition-colors duration-200
+                    ${filters.searchQuery === model ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-primary-50'}`}
+                  onClick={() => setFilters(f => ({ ...f, searchQuery: model || '' }))}
+                >
+                  {model}
+                </button>
+              ))}
+            </div>
+          )}
+          <CategoryProducts
+            categorySlug={''}
+            filters={filters}
+            onProductsLoaded={setProducts}
+          />
+        </section>
       </div>
     </Layout>
   );

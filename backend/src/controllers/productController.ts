@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Product, IProduct } from '../models/Product';
 import { Category } from '../models/Category';
 import mongoose from 'mongoose';
+import Characteristic from '../models/Characteristic';
 
 // Функция для генерации уникального SKU
 const generateUniqueSku = async (): Promise<string> => {
@@ -30,11 +31,19 @@ const generateUniqueSku = async (): Promise<string> => {
 const makeFullUrl = (req: Request, path: string) => {
   if (!path) return path;
   if (path.startsWith('http')) return path;
-  return `${req.protocol}://${req.get('host')}${path}`;
+  
+  // Определяем протокол с учетом прокси (Nginx)
+  const protocol = req.get('X-Forwarded-Proto') || req.protocol;
+  const host = req.get('X-Forwarded-Host') || req.get('host');
+  
+  // В продакшене всегда используем HTTPS
+  const finalProtocol = process.env.NODE_ENV === 'production' ? 'https' : protocol;
+  
+  return `${finalProtocol}://${host}${path}`;
 };
 
 // Функция для преобразования изображений в товаре
-const transformProductImages = (req: Request, product: any) => {
+export const transformProductImages = (req: Request, product: any) => {
   if (product.mainImage) {
     product.mainImage = makeFullUrl(req, product.mainImage);
   }
@@ -75,13 +84,28 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
     const sortOrder = req.query.sortOrder as string || 'desc';
 
     // Build filter
-    const filter: any = { isActive: true };
+    const filter: any = { isDeleted: { $ne: true } };
+    
+    // Для админ-панели показываем все товары, для публичного API - только активные
+    const isAdminRequest = req.query.admin === 'true';
+    if (!isAdminRequest) {
+      filter.isActive = true;
+    }
+    
+    console.log(`📦 getProducts вызван с admin=${isAdminRequest}, фильтр:`, filter);
     
     if (category) {
-      // Находим категорию по slug
-      const categoryDoc = await Category.findOne({ slug: category });
-      if (categoryDoc) {
-        filter.categoryId = categoryDoc._id;
+      if (category === 'none') {
+        filter.$or = [
+          { categoryId: { $exists: false } },
+          { categoryId: null }
+        ];
+      } else {
+        // Находим категорию по slug
+        const categoryDoc = await Category.findOne({ slug: category });
+        if (categoryDoc) {
+          filter.categoryId = categoryDoc._id;
+        }
       }
     }
     
@@ -95,12 +119,95 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
       if (maxPrice !== undefined) filter.price.$lte = maxPrice;
     }
 
+    // --- ДОБАВЛЕННЫЕ ФИЛЬТРЫ ДЛЯ ФРОНТА ---
+    if (req.query.stockQuantity === '0') {
+      filter.stockQuantity = 0;
+    }
+    if (req.query.stockQuantity_gt === '0') {
+      filter.stockQuantity = { $gt: 0 };
+    }
+    if (req.query.noImages === '1') {
+      filter.$and = [
+        { $or: [ 
+          { mainImage: { $exists: false } }, 
+          { mainImage: '' }, 
+          { mainImage: null },
+          { mainImage: 'placeholder.jpg' }
+        ] },
+        { $or: [ 
+          { images: { $exists: false } }, 
+          { images: { $size: 0 } },
+          { images: [] }
+        ] }
+      ];
+    }
+    if (req.query.withImages === '1') {
+      filter.$or = [
+        { $and: [ 
+          { mainImage: { $ne: null } }, 
+          { mainImage: { $ne: '' } },
+          { mainImage: { $ne: 'placeholder.jpg' } }
+        ] },
+        { images: { $exists: true, $not: { $size: 0 } } }
+      ];
+    }
+    if (req.query.isActive === 'false') {
+      filter.isActive = false;
+    }
+    if (req.query.isActive === 'true') {
+      filter.isActive = true;
+    }
+    // --- КОНЕЦ ДОБАВЛЕННЫХ ФИЛЬТРОВ ---
+
+    // Особые разделы
+    if (req.query.isMainPage === '1') {
+      filter.isMainPage = true;
+    }
+    if (req.query.isPromotion === '1') {
+      filter.isPromotion = true;
+    }
+    if (req.query.isNewProduct === '1') {
+      filter.isNewProduct = true;
+    }
+    if (req.query.isBestseller === '1') {
+      filter.isBestseller = true;
+    }
+    if (req.query.isFromDatabase === '1') {
+      filter.isFromDatabase = true;
+    }
+
+    // --- ФИЛЬТР ДУБЛИКАТОВ ---
+    if (req.query.duplicates === '1') {
+      // Найти все названия, которые встречаются более одного раза (case-insensitive)
+      const duplicateNamesAgg = await Product.aggregate([
+        { $match: filter },
+        { $group: { _id: { $toLower: "$name" }, count: { $sum: 1 } } },
+        { $match: { count: { $gt: 1 } } },
+        { $project: { _id: 1 } }
+      ]);
+      const duplicateNames = duplicateNamesAgg.map((d: any) => d._id);
+      // Добавить фильтр по этим названиям
+      filter.$expr = { $in: [ { $toLower: "$name" }, duplicateNames ] };
+    }
+    // --- КОНЕЦ ФИЛЬТРА ДУБЛИКАТОВ ---
+
     // Build sort
     const sort: any = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     const products = await Product.find(filter)
-      .populate('categoryId', 'name slug')
+      .populate({
+        path: 'categoryId',
+        select: 'name slug parentId',
+        populate: {
+          path: 'parentId',
+          select: 'name slug parentId',
+          populate: {
+            path: 'parentId',
+            select: 'name slug'
+          }
+        }
+      })
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -110,14 +217,18 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
     // Преобразуем URL изображений для всех товаров
     const transformedProducts = products.map(product => transformProductImages(req, product.toObject()));
 
+    console.log(`📦 getProducts возвращает ${transformedProducts.length} товаров из ${total} общих`);
+    
     res.json({
       products: transformedProducts,
       page,
       pages: Math.ceil(total / limit),
-      total,
+      total, // legacy
+      totalCount: total, // новое поле для фронта
       hasNextPage: page * limit < total,
       hasPrevPage: page > 1
     });
+    return;
   } catch (error) {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
@@ -148,7 +259,18 @@ export const getProduct = async (req: Request, res: Response): Promise<void> => 
 export const getProductBySlug = async (req: Request, res: Response): Promise<void> => {
   try {
     const product = await Product.findOne({ slug: req.params.slug })
-      .populate('categoryId', 'name slug');
+      .populate({
+        path: 'categoryId',
+        select: 'name slug parentId',
+        populate: {
+          path: 'parentId',
+          select: 'name slug parentId',
+          populate: {
+            path: 'parentId',
+            select: 'name slug parentId',
+          }
+        }
+      });
 
     if (product) {
       const transformedProduct = transformProductImages(req, product.toObject());
@@ -167,6 +289,40 @@ export const getProductBySlug = async (req: Request, res: Response): Promise<voi
 export const createProduct = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Creating product with data:', req.body);
+    console.log('Uploaded files:', req.files);
+    
+    // Обрабатываем загруженные изображения
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      const imageUrls = req.files.map((file: Express.Multer.File) => `/uploads/${file.filename}`);
+      req.body.images = imageUrls;
+      req.body.mainImage = imageUrls[0]; // Первое изображение как главное
+      console.log('Processed images:', imageUrls);
+    }
+    
+    // Обрабатываем JSON поля из FormData
+    if (req.body.serialNumbers && typeof req.body.serialNumbers === 'string') {
+      try {
+        req.body.serialNumbers = JSON.parse(req.body.serialNumbers);
+      } catch (e) {
+        console.error('Error parsing serialNumbers:', e);
+      }
+    }
+    
+    if (req.body.barcodes && typeof req.body.barcodes === 'string') {
+      try {
+        req.body.barcodes = JSON.parse(req.body.barcodes);
+      } catch (e) {
+        console.error('Error parsing barcodes:', e);
+      }
+    }
+    
+    if (req.body.characteristics && typeof req.body.characteristics === 'string') {
+      try {
+        req.body.characteristics = JSON.parse(req.body.characteristics);
+      } catch (e) {
+        console.error('Error parsing characteristics:', e);
+      }
+    }
     
     // Обрабатываем mainImage - извлекаем URL из объекта
     if (req.body.mainImage && typeof req.body.mainImage === 'object') {
@@ -274,6 +430,21 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       });
     }
     
+    // Обрабатываем characteristics - создаем новые, если name, но не characteristicId
+    if (Array.isArray(req.body.characteristics)) {
+      for (let i = 0; i < req.body.characteristics.length; i++) {
+        const char = req.body.characteristics[i];
+        if (char && char.name && !char.characteristicId) {
+          // Проверяем, есть ли уже такая характеристика
+          let found = await Characteristic.findOne({ name: char.name });
+          if (!found) {
+            found = await Characteristic.create({ name: char.name });
+          }
+          req.body.characteristics[i] = { characteristicId: found._id, value: char.value };
+        }
+      }
+    }
+    
     // Генерируем slug из названия, если его нет
     if (!req.body.slug && req.body.name) {
       console.log('Generating slug in backend for:', req.body.name);
@@ -333,9 +504,32 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
 // @access  Private/Admin
 export const updateProduct = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Updating product with ID:', req.params.id);
+    console.log('Request body:', req.body);
+    console.log('CategoryId in request:', req.body.categoryId);
+    
+    // Проверяем валидность categoryId если он передан
+    if (req.body.categoryId && !mongoose.Types.ObjectId.isValid(req.body.categoryId)) {
+      console.error('Invalid categoryId format:', req.body.categoryId);
+      res.status(400).json({ message: 'Неверный формат ID категории' });
+      return;
+    }
+
+    // Проверяем существование категории
+    if (req.body.categoryId) {
+      const categoryExists = await Category.findById(req.body.categoryId);
+      if (!categoryExists) {
+        console.error('Category not found:', req.body.categoryId);
+        res.status(400).json({ message: 'Категория не найдена' });
+        return;
+      }
+      console.log('Category found:', categoryExists.name);
+    }
+    
     const product = await Product.findById(req.params.id);
 
     if (product) {
+      console.log('Current product category:', product.categoryId);
       // Генерируем slug из названия, если его нет
       if (!req.body.slug && req.body.name) {
         console.log('Generating slug in update for:', req.body.name);
@@ -367,10 +561,15 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
       }
       
       Object.assign(product, req.body);
+      console.log('Product before save:', { categoryId: product.categoryId });
+      
       const updatedProduct = await product.save();
+      console.log('Product after save:', { categoryId: updatedProduct.categoryId });
       
       const populatedUpdatedProduct = await Product.findById(updatedProduct._id)
         .populate('categoryId', 'name slug');
+      
+      console.log('Populated product:', { categoryId: populatedUpdatedProduct?.categoryId });
       
       if (!populatedUpdatedProduct) {
         res.status(500).json({ message: 'Ошибка при обновлении товара' });
@@ -435,7 +634,7 @@ export const getFeaturedProducts = async (req: Request, res: Response): Promise<
 export const getProductsByCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 12;
+    const limit = parseInt(req.query.limit as string) || 10000;
     const skip = (page - 1) * limit;
 
     const category = await Category.findOne({ slug: req.params.categorySlug });
@@ -470,10 +669,12 @@ export const getProductsByCategory = async (req: Request, res: Response): Promis
 
     res.json({
       products: transformedProducts,
-      category,
       page,
       pages: Math.ceil(total / limit),
-      total
+      total, // legacy
+      totalCount: total, // новое поле для фронта
+      hasNextPage: page * limit < total,
+      hasPrevPage: page > 1
     });
   } catch (error) {
     console.error('Error in getProductsByCategory:', error);

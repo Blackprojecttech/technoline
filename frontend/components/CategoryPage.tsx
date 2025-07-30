@@ -8,6 +8,7 @@ import Layout from './layout/Layout';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/store';
 import { addItem } from '../store/slices/cartSlice';
+import { fixImageUrl } from '../utils/imageUrl';
 
 interface Product {
   _id: string;
@@ -49,8 +50,10 @@ export default function CategoryPage({ slug }: CategoryPageProps) {
         setLoading(true);
         console.log(`🔍 CategoryPage: Starting fetch for slug: ${slug}`);
         
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
+        
         // Получаем информацию о категории
-        const categoryResponse = await fetch(`http://localhost:5002/api/categories/${slug}`);
+        const categoryResponse = await fetch(`${API_BASE_URL}/categories/${slug}`);
         console.log(`📡 CategoryPage: Category response status: ${categoryResponse.status}`);
         
         if (!categoryResponse.ok) {
@@ -62,7 +65,7 @@ export default function CategoryPage({ slug }: CategoryPageProps) {
         setCategory(categoryData);
 
         // Получаем товары категории
-        const productsResponse = await fetch(`http://localhost:5002/api/products/category/${slug}`);
+        const productsResponse = await fetch(`${API_BASE_URL}/products/category/${slug}`);
         console.log(`📡 CategoryPage: Products response status: ${productsResponse.status}`);
         
         if (!productsResponse.ok) {
@@ -243,7 +246,7 @@ export default function CategoryPage({ slug }: CategoryPageProps) {
                     {/* Product Image */}
                     <div className="relative mb-4 overflow-hidden rounded-lg">
                       <img
-                        src={product.mainImage || product.images[0]}
+                        src={fixImageUrl(product.mainImage || product.images[0])}
                         alt={product.name}
                         className="w-full h-48 object-contain group-hover:scale-105 transition-transform duration-300"
                       />

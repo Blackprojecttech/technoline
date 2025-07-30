@@ -1,0 +1,12 @@
+version: "2"
+authtoken: 306nOEE1x35B1T5oqrrCHgsOgGy_2vF1dAen7M2t2dHHuxfua
+tunnels:
+  api:
+    addr: 5002
+    proto: http
+  frontend:
+    addr: 3100
+    proto: http
+  admin:
+    addr: 3200
+    proto: http 

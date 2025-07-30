@@ -71,28 +71,28 @@ export default function Categories() {
   ];
 
   return (
-    <section className="py-20 relative">
+    <section className="py-12 md:py-20 relative">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-50/50 to-accent-50/50"></div>
       
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl lg:text-5xl font-bold text-secondary-800 mb-4">
+        <div className="text-center mb-8 md:mb-16">
+          <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-secondary-800 mb-4">
             Популярные категории
           </h2>
-          <p className="text-xl text-secondary-600 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-secondary-600 max-w-2xl mx-auto">
             Выберите категорию и найдите идеальный товар для себя
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
           {categories.map((category) => {
             const IconComponent = category.icon;
             return (
               <Link
                 key={category.id}
                 href={`/catalog/${category.id}`}
-                className={`group relative overflow-hidden rounded-2xl border ${category.borderColor} ${category.bgColor} p-8 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/25 bg-white`}
+                className={`group relative overflow-hidden rounded-xl md:rounded-2xl border ${category.borderColor} ${category.bgColor} p-4 md:p-8 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/25 bg-white`}
                 onMouseEnter={() => setHoveredCategory(category.id)}
                 onMouseLeave={() => setHoveredCategory(null)}
               >
@@ -101,33 +101,33 @@ export default function Categories() {
                 
                 {/* Animated background elements */}
                 <div className="absolute inset-0 overflow-hidden">
-                  <div className={`absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br ${category.color} rounded-full opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-150`}></div>
-                  <div className={`absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-br ${category.color} rounded-full opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-150`}></div>
+                  <div className={`absolute -top-4 -right-4 w-16 md:w-24 h-16 md:h-24 bg-gradient-to-br ${category.color} rounded-full opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-150`}></div>
+                  <div className={`absolute -bottom-4 -left-4 w-12 md:w-16 h-12 md:h-16 bg-gradient-to-br ${category.color} rounded-full opacity-10 group-hover:opacity-20 transition-all duration-500 group-hover:scale-150`}></div>
                 </div>
 
                 <div className="relative z-10">
                   {/* Icon */}
-                  <div className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                    <IconComponent size={32} className="text-white" />
+                  <div className={`w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br ${category.color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                    <IconComponent size={24} className="text-white md:w-8 md:h-8" />
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-2xl font-bold text-secondary-800 mb-3 group-hover:text-primary-600 transition-colors duration-300">
+                  <h3 className="text-lg md:text-2xl font-bold text-secondary-800 mb-2 md:mb-3 group-hover:text-primary-600 transition-colors duration-300">
                     {category.name}
                   </h3>
                   
-                  <p className="text-secondary-600 mb-4 group-hover:text-secondary-700 transition-colors duration-300">
+                  <p className="text-sm md:text-base text-secondary-600 mb-3 md:mb-4 group-hover:text-secondary-700 transition-colors duration-300">
                     {category.description}
                   </p>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-secondary-500 font-medium">
+                    <span className="text-xs md:text-sm text-secondary-500 font-medium">
                       {category.count}
                     </span>
                     
                     {/* Arrow icon */}
-                    <div className={`w-8 h-8 bg-gradient-to-br ${category.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md`}>
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className={`w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br ${category.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -142,10 +142,10 @@ export default function Categories() {
         </div>
 
         {/* View all categories button */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-8 md:mt-12">
           <Link
             href="/catalog"
-            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg"
+            className="inline-flex items-center px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-semibold rounded-2xl md:rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg"
           >
             Смотреть все категории
             <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,431 +1,249 @@
-# 🚀 Развертывание TechnoLine Store на сервер
+# 🚀 Развертывание Techno-line.stor на вашем домене
 
-## 📋 Требования к серверу
+Данное руководство поможет вам развернуть полную платформу Techno-line.stor на вашем собственном домене.
 
-### Минимальные требования:
-- **ОС**: Ubuntu 20.04+ / CentOS 7+ / Debian 10+
-- **RAM**: 2GB (рекомендуется 4GB+)
-- **CPU**: 2 ядра+
-- **Диск**: 20GB+ свободного места
-- **Порты**: 80, 443, 3000, 5000, 27017
+## 📋 Требования
 
-## 🛠 Подготовка сервера
+### Сервер
+- Ubuntu 20.04+ / CentOS 8+ / Debian 11+
+- Минимум 2GB RAM, 2 CPU cores
+- 20GB свободного места на диске
+- Root доступ
 
-### 1. Обновление системы
+### Программное обеспечение
+- Node.js 18+
+- MongoDB 5.0+
+- Nginx 1.18+
+- PM2 или systemd для управления процессами
+
+## 🔧 Пошаговое развертывание
+
+### 1. Подготовка сервера
+
 ```bash
+# Обновление системы
 sudo apt update && sudo apt upgrade -y
-```
 
-### 2. Установка Node.js и npm
-```bash
-# Установка Node.js 18+
+# Установка Node.js
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Проверка версии
-node --version
-npm --version
-```
-
-### 3. Установка MongoDB
-```bash
-# Импорт ключа MongoDB
-wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
-
-# Добавление репозитория MongoDB
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-
 # Установка MongoDB
-sudo apt update
-sudo apt install -y mongodb-org
+wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
+sudo apt-get update
+sudo apt-get install -y mongodb-org
 
-# Запуск и включение MongoDB
+# Установка Nginx
+sudo apt install -y nginx
+
+# Запуск сервисов
 sudo systemctl start mongod
 sudo systemctl enable mongod
-
-# Проверка статуса
-sudo systemctl status mongod
-```
-
-### 4. Установка PM2 (менеджер процессов)
-```bash
-sudo npm install -g pm2
-```
-
-### 5. Установка Nginx (веб-сервер)
-```bash
-sudo apt install -y nginx
 sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-## 📁 Загрузка проекта на сервер
+### 2. Настройка DNS записей
 
-### 1. Клонирование репозитория
-```bash
-# Создание директории для проекта
-sudo mkdir -p /var/www/technoline-store
-sudo chown $USER:$USER /var/www/technoline-store
-cd /var/www/technoline-store
+Добавьте следующие DNS записи для домена technohubstore.net:
 
-# Клонирование проекта (замените на ваш репозиторий)
-git clone <your-repository-url> .
+```
+A    technohubstore.net         -> IP_ВАШЕГО_СЕРВЕРА
+A    www.technohubstore.net     -> IP_ВАШЕГО_СЕРВЕРА
+A    admin.technohubstore.net   -> IP_ВАШЕГО_СЕРВЕРА
 ```
 
-### 2. Установка зависимостей
+### 3. Развертывание приложения
+
 ```bash
-# Установка всех зависимостей
-npm run install:all
+# Клонирование репозитория
+git clone https://github.com/your-username/techno-line.stor.git
+cd techno-line.stor
+
+# Запуск скрипта развертывания
+chmod +x deploy.sh
+./deploy.sh technohubstore.net
 ```
 
-## ⚙️ Настройка переменных окружения
+### 4. Настройка SSL сертификатов
 
-### 1. Backend (.env)
 ```bash
-cd backend
-cp env.example .env
-nano .env
+# Запуск скрипта настройки SSL
+chmod +x setup-ssl.sh
+./setup-ssl.sh technohubstore.net admin@technohubstore.net
 ```
 
-Содержимое `backend/.env`:
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/technoline-store
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-NODE_ENV=production
-FRONTEND_URL=https://your-domain.com
-ADMIN_URL=https://admin.your-domain.com
+### 5. Настройка переменных окружения
+
+#### Бэкенд (`/var/www/techno-line/backend/.env`)
+```bash
+# Скопируйте конфигурацию
+cp /var/www/techno-line/backend/env.production /var/www/techno-line/backend/.env
+
+# Отредактируйте файл
+sudo nano /var/www/techno-line/backend/.env
 ```
 
-### 2. Frontend (.env.local)
+Замените следующие значения:
+- `JWT_SECRET` на случайную строку (генерируйте с помощью `openssl rand -base64 32`)
+- `ADMIN_JWT_SECRET` на другую случайную строку  
+- `MONGODB_URI` на ваш MongoDB connection string
+- Email настройки для уведомлений (SMTP_USER, SMTP_PASS)
+- API ключи внешних сервисов (DADATA_API_KEY, CDEK_CLIENT_ID, etc.)
+- Платежные системы (SBERBANK_USERNAME, SBERBANK_PASSWORD)
+
+#### Фронтенд (`/var/www/techno-line/frontend/.env.local`)
 ```bash
+cp /var/www/techno-line/frontend/env.production /var/www/techno-line/frontend/.env.local
+sudo nano /var/www/techno-line/frontend/.env.local
+```
+
+#### Админка (`/var/www/techno-line/admin/.env`)
+```bash
+cp /var/www/techno-line/admin/env.production /var/www/techno-line/admin/.env
+sudo nano /var/www/techno-line/admin/.env
+```
+
+### 6. Пересборка с новыми настройками
+
+```bash
+cd /var/www/techno-line
+
+# Пересборка фронтенда
 cd frontend
-cp env.example .env.local
-nano .env.local
-```
-
-Содержимое `frontend/.env.local`:
-```env
-NEXT_PUBLIC_API_URL=https://api.your-domain.com
-```
-
-### 3. Admin (.env)
-```bash
-cd admin
-cp env.example .env
-nano .env
-```
-
-Содержимое `admin/.env`:
-```env
-VITE_API_URL=https://api.your-domain.com
-```
-
-## 🏗️ Сборка проекта
-
-### 1. Сборка Backend
-```bash
-cd /var/www/technoline-store/backend
 npm run build
-```
 
-### 2. Сборка Frontend
-```bash
-cd /var/www/technoline-store/frontend
+# Пересборка админки
+cd ../admin
 npm run build
-```
 
-### 3. Сборка Admin
-```bash
-cd /var/www/technoline-store/admin
+# Пересборка бэкенда
+cd ../backend
 npm run build
+
+# Перезапуск службы бэкенда
+sudo systemctl restart techno-line-backend
 ```
 
-## 🚀 Запуск с PM2
+## 🔍 Проверка работоспособности
 
-### 1. Создание конфигурации PM2
 ```bash
-cd /var/www/technoline-store
-nano ecosystem.config.js
-```
+# Проверка статуса бэкенда
+sudo systemctl status techno-line-backend
 
-Содержимое `ecosystem.config.js`:
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: 'technoline-backend',
-      cwd: '/var/www/technoline-store/backend',
-      script: 'dist/index.js',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 5000
-      }
-    },
-    {
-      name: 'technoline-frontend',
-      cwd: '/var/www/technoline-store/frontend',
-      script: 'npm',
-      args: 'start',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000
-      }
-    }
-  ]
-};
-```
+# Проверка логов
+sudo journalctl -u techno-line-backend -f
 
-### 2. Запуск приложений
-```bash
-cd /var/www/technoline-store
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
-
-## 🌐 Настройка Nginx
-
-### 1. Создание конфигурации для API
-```bash
-sudo nano /etc/nginx/sites-available/technoline-api
-```
-
-Содержимое:
-```nginx
-server {
-    listen 80;
-    server_name api.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### 2. Создание конфигурации для Frontend
-```bash
-sudo nano /etc/nginx/sites-available/technoline-frontend
-```
-
-Содержимое:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### 3. Создание конфигурации для Admin
-```bash
-sudo nano /etc/nginx/sites-available/technoline-admin
-```
-
-Содержимое:
-```nginx
-server {
-    listen 80;
-    server_name admin.your-domain.com;
-
-    root /var/www/technoline-store/admin/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### 4. Активация сайтов
-```bash
-sudo ln -s /etc/nginx/sites-available/technoline-api /etc/nginx/sites-enabled/
-sudo ln -s /etc/nginx/sites-available/technoline-frontend /etc/nginx/sites-enabled/
-sudo ln -s /etc/nginx/sites-available/technoline-admin /etc/nginx/sites-enabled/
-
-# Удаление дефолтного сайта
-sudo rm /etc/nginx/sites-enabled/default
-
-# Проверка конфигурации
+# Проверка Nginx
 sudo nginx -t
+sudo systemctl status nginx
 
-# Перезапуск Nginx
-sudo systemctl restart nginx
+# Проверка SSL сертификатов
+sudo certbot certificates
 ```
 
-## 🔒 Настройка SSL (HTTPS)
+## 🌐 Доступ к приложению
 
-### 1. Установка Certbot
+После успешного развертывания ваша платформа будет доступна по адресам:
+
+- **Основной сайт**: https://technohubstore.net
+- **Админ панель**: https://admin.technohubstore.net
+- **API**: https://technohubstore.net/api
+
+## 📊 Мониторинг и обслуживание
+
+### Логи
 ```bash
-sudo apt install -y certbot python3-certbot-nginx
-```
+# Логи бэкенда
+sudo journalctl -u techno-line-backend -f
 
-### 2. Получение SSL сертификатов
-```bash
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-sudo certbot --nginx -d api.your-domain.com
-sudo certbot --nginx -d admin.your-domain.com
-```
-
-### 3. Автоматическое обновление
-```bash
-sudo crontab -e
-# Добавить строку:
-# 0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-## 📊 Мониторинг и логи
-
-### 1. Просмотр статуса PM2
-```bash
-pm2 status
-pm2 logs
-```
-
-### 2. Просмотр логов Nginx
-```bash
+# Логи Nginx
 sudo tail -f /var/log/nginx/access.log
 sudo tail -f /var/log/nginx/error.log
-```
 
-### 3. Просмотр логов MongoDB
-```bash
+# Логи MongoDB
 sudo tail -f /var/log/mongodb/mongod.log
 ```
 
-## 🔧 Полезные команды
-
-### Управление PM2
+### Резервное копирование
 ```bash
-# Перезапуск приложений
-pm2 restart all
+# Создание бэкапа MongoDB
+mongodump --out /backup/mongodb/$(date +%Y%m%d_%H%M%S)
 
-# Остановка приложений
-pm2 stop all
-
-# Просмотр логов
-pm2 logs technoline-backend
-pm2 logs technoline-frontend
-
-# Мониторинг ресурсов
-pm2 monit
+# Создание бэкапа файлов
+tar -czf /backup/files/techno-line-$(date +%Y%m%d_%H%M%S).tar.gz /var/www/techno-line
 ```
 
-### Обновление проекта
+### Обновление приложения
 ```bash
-cd /var/www/technoline-store
+cd /var/www/techno-line
 git pull origin main
-npm run install:all
-npm run build
-pm2 restart all
+./deploy.sh technohubstore.net
 ```
 
-### Резервное копирование MongoDB
-```bash
-# Создание бэкапа
-mongodump --db technoline-store --out /var/backups/mongodb/$(date +%Y%m%d)
+## 🔧 Настройка производительности
 
-# Восстановление
-mongorestore --db technoline-store /var/backups/mongodb/20240101/technoline-store/
+### Nginx оптимизация
+Добавьте в `/etc/nginx/nginx.conf`:
+```nginx
+worker_processes auto;
+worker_connections 1024;
+
+gzip on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
 ```
 
-## 🚨 Безопасность
-
-### 1. Настройка файрвола
+### MongoDB оптимизация
 ```bash
-sudo ufw allow ssh
-sudo ufw allow 'Nginx Full'
-sudo ufw enable
+# Настройка индексов
+mongo technoline_prod --eval "
+db.products.createIndex({name: 'text', description: 'text'});
+db.orders.createIndex({userId: 1, createdAt: -1});
+db.users.createIndex({email: 1});
+"
 ```
 
-### 2. Обновление системы
+## 🆘 Решение проблем
+
+### Бэкенд не запускается
 ```bash
-# Автоматические обновления
-sudo apt install unattended-upgrades
-sudo dpkg-reconfigure -plow unattended-upgrades
+# Проверка портов
+sudo netstat -tlnp | grep :5002
+
+# Проверка MongoDB
+sudo systemctl status mongod
+
+# Проверка переменных окружения
+cd /var/www/techno-line/backend && node -e "require('dotenv').config(); console.log(process.env.MONGODB_URI)"
 ```
 
-### 3. Настройка MongoDB безопасности
+### Проблемы с SSL
 ```bash
-sudo nano /etc/mongod.conf
-# Добавить:
-# security:
-#   authorization: enabled
+# Обновление сертификатов
+sudo certbot renew --dry-run
+
+# Проверка конфигурации Nginx
+sudo nginx -t
+```
+
+### Проблемы с доступом к файлам
+```bash
+# Исправление прав доступа
+sudo chown -R www-data:www-data /var/www/techno-line
+sudo chmod -R 755 /var/www/techno-line
 ```
 
 ## 📞 Поддержка
 
-### Полезные команды для диагностики:
-```bash
-# Проверка статуса сервисов
-sudo systemctl status nginx
-sudo systemctl status mongod
-pm2 status
+Если у вас возникли проблемы с развертыванием, создайте issue в репозитории GitHub или обратитесь к документации отдельных компонентов.
 
-# Проверка портов
-sudo netstat -tlnp
+## 🔐 Безопасность
 
-# Проверка дискового пространства
-df -h
-
-# Проверка использования памяти
-free -h
-```
-
-### Логи для отладки:
-- **Nginx**: `/var/log/nginx/`
-- **MongoDB**: `/var/log/mongodb/`
-- **PM2**: `pm2 logs`
-- **Приложения**: `/var/www/technoline-store/logs/`
-
-## 🎯 Готово!
-
-После выполнения всех шагов ваш проект будет доступен по адресам:
-- **Магазин**: https://your-domain.com
-- **API**: https://api.your-domain.com
-- **Админ-панель**: https://admin.your-domain.com
-
-Не забудьте:
-1. Заменить `your-domain.com` на ваш реальный домен
-2. Изменить `JWT_SECRET` на уникальный ключ
-3. Настроить DNS записи для всех поддоменов
-4. Создать первого администратора через API 
+- Регулярно обновляйте систему и зависимости
+- Используйте сильные пароли и JWT секреты
+- Настройте firewall (ufw)
+- Регулярно создавайте резервные копии
+- Мониторьте логи на предмет подозрительной активности 

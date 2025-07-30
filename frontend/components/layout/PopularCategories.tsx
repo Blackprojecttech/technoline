@@ -113,7 +113,7 @@ export default function PopularCategories() {
   }
 
   return (
-    <div className="sticky top-24 z-40 bg-white/60 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+    <div className="sticky top-24 z-40 bg-white/60 backdrop-blur-sm border-b border-gray-200 shadow-sm hidden md:block">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center space-x-6">

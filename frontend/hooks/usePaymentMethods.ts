@@ -34,7 +34,7 @@ export const usePaymentMethods = (deliveryMethodId?: string) => {
       
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/payment-methods/by-delivery/${deliveryMethodId}`
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api'}/payment-methods/by-delivery/${deliveryMethodId}`
         );
         
         if (!response.ok) {

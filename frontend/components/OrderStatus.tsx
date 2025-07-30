@@ -8,7 +8,9 @@ import {
   Package, 
   XCircle, 
   AlertCircle,
-  Loader2
+  Loader2,
+  User,
+  UserCheck
 } from 'lucide-react';
 
 interface OrderStatusProps {
@@ -74,6 +76,15 @@ export default function OrderStatus({ status, size = 'md', showAnimation = true 
           text: 'Отменен',
           description: 'Заказ отменен'
         };
+      case 'with_courier':
+        return {
+          icon: UserCheck,
+          color: 'text-cyan-600',
+          bg: 'bg-cyan-100',
+          border: 'border-cyan-200',
+          text: 'Передан курьеру',
+          description: 'Заказ передан курьеру'
+        };
       default:
         return {
           icon: AlertCircle,
@@ -122,6 +133,21 @@ export default function OrderStatus({ status, size = 'md', showAnimation = true 
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         >
           <Loader2 className={`${statusInfo.color} ${classes.icon}`} />
+        </motion.div>
+      ) : status === 'with_courier' && showAnimation ? (
+        <motion.div
+          animate={{ 
+            x: [0, 5, 0],
+            y: [0, -2, 0]
+          }}
+          transition={{ 
+            duration: 1.5, 
+            repeat: Infinity, 
+            ease: "easeInOut" 
+          }}
+          className="opacity-90"
+        >
+          <UserCheck className={`${statusInfo.color} ${classes.icon}`} />
         </motion.div>
       ) : (
         <StatusIcon className={`${statusInfo.color} ${classes.icon}`} />

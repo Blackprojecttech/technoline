@@ -3,12 +3,13 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { removeItem, updateQuantity, clearCart } from '../../store/slices/cartSlice';
 import { Trash2, ShoppingCart, ArrowLeft, Plus, Minus, Calendar, Clock, Info, Home, MapPin, CheckCircle, Phone as PhoneIcon, AlertTriangle } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import Image from 'next/image';
+import Link from 'next/link';
 import Layout from '../../components/layout/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDeliveryMethods } from '../../hooks/useDeliveryMethods';
@@ -18,7 +19,9 @@ import debounce from 'lodash.debounce';
 import { motion, AnimatePresence } from 'framer-motion';
 import PaymentMethodSelector from '../../components/PaymentMethodSelector';
 import { updateUser } from '../../store/slices/authSlice';
-import ReactInputMask from 'react-input-mask';
+import { IMaskInput } from 'react-imask';
+import LoginModal from '../../components/auth/LoginModal';
+import OrderQRCode from '@/components/OrderQRCode';
 
 interface CartItem {
   _id: string;
@@ -27,6 +30,7 @@ interface CartItem {
   image: string;
   quantity: number;
   sku: string;
+  slug?: string;
 }
 
 interface DeliveryMethod {
@@ -41,7 +45,7 @@ interface DeliveryMethod {
   workingHours?: string;
   address?: string;
   restrictions?: string;
-  costType?: 'fixed' | 'percentage' | 'zone';
+  costType?: 'fixed' | 'percentage' | 'zone' | 'fixed_plus_percentage';
   fixedCost?: number;
   costPercentage?: number;
   orderTimeFrom?: string;
@@ -138,49 +142,115 @@ const SaveAddressModal = ({ open, onClose, onSave }: { open: boolean, onClose: (
 );
 
 // --- Красивая анимированная модалка успешного заказа ---
-const SuccessOrderModal = ({ open, orderId, onGoToOrder, onGoHome }: { open: boolean, orderId: string, onGoToOrder: () => void, onGoHome: () => void }) => (
-  <AnimatePresence>
-    {open && (
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
+const SuccessOrderModal = ({ open, orderId, onGoToOrder, onGoHome, orderNumber, isAuthenticated }: { 
+  open: boolean, 
+  orderId: string, 
+  onGoToOrder: () => void, 
+  onGoHome: () => void,
+  orderNumber: string,
+  isAuthenticated: boolean
+}) => {
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const copyOrderLink = () => {
+    const orderLink = `${window.location.origin}/orders/${orderId}`;
+    navigator.clipboard.writeText(orderLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
         <motion.div
-          className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full relative overflow-hidden"
-          initial={{ scale: 0.85, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.85, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-success-100 via-primary-50 to-accent-100 opacity-60 pointer-events-none" />
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-success-500 to-primary-500 rounded-full flex items-center justify-center mb-4 shadow-lg animate-bounce">
-              <CheckCircle className="text-white" size={36} />
+          <motion.div
+            className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full relative overflow-hidden"
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.85, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-success-100 via-primary-50 to-accent-100 opacity-60 pointer-events-none" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-success-500 to-primary-500 rounded-full flex items-center justify-center mb-4 shadow-lg animate-bounce">
+                <CheckCircle className="text-white" size={36} />
+              </div>
+              <h2 className="text-2xl font-bold text-secondary-800 mb-2 text-center">Заказ успешно оформлен!</h2>
+              <p className="text-secondary-600 mb-6 text-center">Спасибо за ваш заказ. Мы уже начали его обработку!</p>
+              
+              {/* QR код для получения заказа */}
+              <div className="mb-6">
+                <OrderQRCode
+                  orderNumber={orderNumber}
+                  orderId={orderId}
+                  showInModal
+                />
+              </div>
+
+              {/* Блок с ссылкой для неавторизованных пользователей */}
+              {!isAuthenticated && (
+                <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-blue-800 mb-2">
+                    ⚠️ Сохраните ссылку на ваш заказ, чтобы отслеживать его статус:
+                  </p>
+                  <div className="flex items-center gap-2 bg-white rounded border border-blue-200 p-2">
+                    <input
+                      type="text"
+                      value={`${window.location.origin}/orders/${orderId}`}
+                      readOnly
+                      className="flex-1 text-sm bg-transparent outline-none"
+                    />
+                    <button
+                      onClick={copyOrderLink}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                        linkCopied 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                    >
+                      {linkCopied ? 'Скопировано!' : 'Копировать'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 w-full justify-center">
+                <button
+                  onClick={onGoToOrder}
+                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold shadow-md hover:from-primary-600 hover:to-accent-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+                >
+                  Перейти к заказу
+                </button>
+                <button
+                  onClick={onGoHome}
+                  className="px-6 py-3 rounded-lg bg-gray-200 text-secondary-700 font-semibold shadow hover:bg-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+                >
+                  На главную
+                </button>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold text-secondary-800 mb-2 text-center">Заказ успешно оформлен!</h2>
-            <p className="text-secondary-600 mb-6 text-center">Спасибо за ваш заказ. Мы уже начали его обработку!</p>
-            <div className="flex gap-4 w-full justify-center">
-              <button
-                onClick={onGoToOrder}
-                className="px-6 py-3 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white font-semibold shadow-md hover:from-primary-600 hover:to-accent-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
-              >
-                Перейти к заказу
-              </button>
-              <button
-                onClick={onGoHome}
-                className="px-6 py-3 rounded-lg bg-gray-200 text-secondary-700 font-semibold shadow hover:bg-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
-              >
-                На главную
-              </button>
-            </div>
-          </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+      )}
+    </AnimatePresence>
+  );
+};
+
+type ProfileAddress = {
+  id: string;
+  name: string;
+  address: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  isDefault?: boolean;
+};
 
 const CartPage: React.FC = () => {
   const router = useRouter();
@@ -213,6 +283,7 @@ const CartPage: React.FC = () => {
     lng: number | null;
     pvzCdek?: any | null;
     cdekPvzAddress?: string;
+    cdekPvzCode?: string;
     callRequest?: boolean;
   }>({
     firstName: '',
@@ -230,6 +301,7 @@ const CartPage: React.FC = () => {
     lng: null,
     pvzCdek: null,
     cdekPvzAddress: '',
+    cdekPvzCode: '',
     callRequest: false,
   });
   // --- Стейт для подсказок ---
@@ -250,6 +322,7 @@ const CartPage: React.FC = () => {
   const saveAddressPromiseRef = useRef<{ resolve: (v: boolean) => void } | null>(null);
   const [showSuccessOrderModal, setShowSuccessOrderModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [lastOrder, setLastOrder] = useState<any>(null);
   const [callRequest, setCallRequest] = useState<string | null>(null);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [showCallRequestModal, setShowCallRequestModal] = useState(false);
@@ -263,6 +336,8 @@ const CartPage: React.FC = () => {
   const { paymentMethods, loading: paymentLoading, error: paymentError } = usePaymentMethods(selectedDeliveryMethod);
 
   const selectedMethod = deliveryMethods.find(m => m._id === selectedDeliveryMethod);
+
+  const profileAddresses: ProfileAddress[] = Array.isArray(user?.addresses) ? user.addresses : [];
 
   // Фильтрация способов доставки по зоне
   const filteredDeliveryMethods = useMemo(() => {
@@ -702,7 +777,14 @@ const CartPage: React.FC = () => {
       const subtotal = calculateSubtotal();
       return Math.round(subtotal * (method.costPercentage / 100));
     }
-    // 4. Fallback: price
+    // 4. Фиксированная сумма + процент
+    if (method.costType === 'fixed_plus_percentage' && method.fixedCost !== undefined && method.costPercentage) {
+      const subtotal = calculateSubtotal();
+      const fixedPart = method.fixedCost;
+      const percentagePart = Math.round(subtotal * (method.costPercentage / 100));
+      return fixedPart + percentagePart;
+    }
+    // 5. Fallback: price
     return method.price && method.price > 0 ? method.price : 0;
   };
 
@@ -720,9 +802,13 @@ const CartPage: React.FC = () => {
     }
   };
 
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const handleRemoveItem = (itemId: string) => {
-    dispatch(removeItem(itemId));
-    alert('Товар удален из корзины');
+    setDeletingItemId(itemId);
+    setTimeout(() => {
+      dispatch(removeItem(itemId));
+      setDeletingItemId(null);
+    }, 350);
   };
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -740,31 +826,6 @@ const CartPage: React.FC = () => {
     }
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' && 'checked' in e.target ? (e.target as HTMLInputElement).checked : value }));
   };
-
-
-
-  // Автоматически заполняем форму данными пользователя при открытии модального окна
-  useEffect(() => {
-    if (isCheckoutModalVisible && user && isAuthenticated) {
-      setFormData(prev => {
-        let phone = user.phone || prev.phone;
-        // Если телефон не соответствует маске, но похож на российский номер, форматируем
-        if (phone && !/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(phone)) {
-          const digits = phone.replace(/\D/g, '');
-          if (digits.length === 11 && (digits[0] === '7' || digits[0] === '8')) {
-            phone = `+7 (${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7,9)}-${digits.slice(9,11)}`;
-          }
-        }
-        return {
-          ...prev,
-          email: user.email || prev.email,
-          firstName: user.firstName || prev.firstName,
-          lastName: user.lastName || prev.lastName,
-          phone
-        };
-      });
-    }
-  }, [isCheckoutModalVisible, user, isAuthenticated]);
 
   // --- Функция для показа модалки и возврата результата ---
   const askSaveAddress = () => {
@@ -803,7 +864,8 @@ const CartPage: React.FC = () => {
       showErrorToast('Пожалуйста, выберите способ оплаты');
       return;
     }
-    if (selectedMethod && selectedMethod.type === 'cdek' && !formData.pvzCdek) {
+    const selectedMethod = deliveryMethods.find(m => m._id === selectedDeliveryMethod);
+    if (selectedMethod && selectedMethod.type === 'cdek' && (!selectedCdekPVZ && !formData.pvzCdek)) {
       showErrorToast('Пожалуйста, выберите пункт выдачи СДЭК');
       return;
     }
@@ -814,17 +876,12 @@ const CartPage: React.FC = () => {
     if (!callRequest) {
       setShowCallRequestModal(true);
       setCallRequestError(true);
-      // Прокручиваем к полю выбора звонка
       setTimeout(() => {
         const callRequestElement = document.getElementById('callRequestContainer');
         if (callRequestElement) {
-          callRequestElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
+          callRequestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
-      // Автоматически закрываем модальное окно через 3 секунды
       setTimeout(() => setShowCallRequestModal(false), 3000);
       return;
     }
@@ -841,12 +898,6 @@ const CartPage: React.FC = () => {
         return;
       }
       const selectedMethod = deliveryMethods.find(m => m._id === selectedDeliveryMethod);
-      if (!isAuthenticated || !user) {
-        alert('Необходимо войти в систему для оформления заказа');
-        setIsOrderProcessing(false);
-        return;
-      }
-      // Валидация: для CDEK не требуем дату и время доставки
       if (selectedMethod && selectedMethod.type !== 'cdek' && !selectedDeliveryDate) {
         alert('Пожалуйста, выберите дату доставки');
         setIsOrderProcessing(false);
@@ -857,13 +908,10 @@ const CartPage: React.FC = () => {
         setIsOrderProcessing(false);
         return;
       }
-
       if (!formData.paymentMethod) {
         alert('Выберите способ оплаты');
         return;
       }
-
-      // Проверяем зону только для способов доставки, требующих адрес
       if (selectedMethod && (selectedMethod.type === 'courier' || selectedMethod.type === 'cdek' || selectedMethod.type === 'urgent')) {
         if (zoneResult === null || zoneResult === 'unknown') {
           alert('Пожалуйста, введите корректный адрес для определения зоны доставки.');
@@ -871,56 +919,23 @@ const CartPage: React.FC = () => {
           return;
         }
       }
-
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        alert('Ошибка авторизации. Пожалуйста, войдите в систему снова');
-        router.push('/auth/login');
-        return;
-      }
-
-      if (selectedMethod && selectedMethod.type === 'cdek' && !formData.pvzCdek) {
+      if (selectedMethod && selectedMethod.type === 'cdek' && (!selectedCdekPVZ && !formData.pvzCdek)) {
         alert('Пожалуйста, выберите пункт выдачи СДЭК!');
         setIsOrderProcessing(false);
         return;
       }
-
-      // Находим выбранный способ оплаты для получения systemCode
       const selectedPaymentMethod = paymentMethods.find(pm => pm._id === formData.paymentMethod);
-      console.log('🔍 Доступные способы оплаты:', paymentMethods);
-      console.log('🔍 Выбранный способ оплаты:', selectedPaymentMethod);
-      if (selectedPaymentMethod) {
-        console.log('🔍 systemCode выбранного способа:', selectedPaymentMethod.systemCode);
-      } else {
-        console.log('❌ Не найден выбранный способ оплаты по _id:', formData.paymentMethod);
-      }
-      
       if (!selectedPaymentMethod) {
         alert('Выбранный способ оплаты не найден');
         return;
       }
-
-      // Поддерживаем все возможные systemCode, которые могут прийти с бэка
-      const validPaymentMethods = [
-        'card', 'cash', 'bank_transfer', 'credit', 'credit_purchase', 'crypto', 'cash_on_delivery',
-        'bank_card', 'usdt', 'sberbank_transfer', 'usdt_payment' // добавлен USDT для поддержки оформления заказа
-      ];
-      // Приводим к нужному значению для отправки в заказ
       let paymentSystemCode = selectedPaymentMethod.systemCode;
-      if (paymentSystemCode === 'bank_card') paymentSystemCode = 'card';
-      if (paymentSystemCode === 'sberbank_transfer') paymentSystemCode = 'bank_transfer';
-      if (paymentSystemCode === 'credit_purchase') paymentSystemCode = 'credit';
-      // usdt теперь не маппим на crypto, отправляем как есть
-      
-      if (!validPaymentMethods.includes(selectedPaymentMethod.systemCode)) {
-        console.error('❌ Неподдерживаемый способ оплаты:', selectedPaymentMethod.systemCode);
-        alert('Неподдерживаемый способ оплаты');
-        return;
-      }
-
-      // Формируем orderData с учётом типа доставки
+      // Исправляем маппинг способов оплаты
+      if (paymentSystemCode === 'card') paymentSystemCode = 'bank_card';
+      if (paymentSystemCode === 'bank_transfer') paymentSystemCode = 'sberbank_transfer';
+      if (paymentSystemCode === 'usdt') paymentSystemCode = 'usdt_payment';
       let orderData: any = {
-        items: cartItems.map((item: CartItem) => ({
+        items: cartItems.map((item: any) => ({
           productId: item._id,
           name: item.name,
           price: item.price,
@@ -932,103 +947,69 @@ const CartPage: React.FC = () => {
         shipping: calculateShipping(),
         total: calculateTotal(),
         deliveryMethod: selectedDeliveryMethod,
-        paymentMethod: paymentSystemCode === 'cash_on_delivery' ? 'cash' : paymentSystemCode as 'card' | 'cash' | 'bank_transfer' | 'credit' | 'crypto' | 'usdt',
+        paymentMethod: paymentSystemCode,
         shippingAddress: {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone,
           address: selectedMethod?.type === 'pickup' ? 'Самовывоз' : formData.address,
-          city: selectedMethod?.type === 'pickup' ? 'Самовывоз' : formData.city,
-          state: selectedMethod?.type === 'pickup' ? 'Самовывоз' : formData.state,
-          zipCode: selectedMethod?.type === 'pickup' ? 'Самовывоз' : formData.zipCode,
+          city: selectedMethod?.type === 'pickup' ? 'Москва' : (selectedMethod?.type === 'urgent' ? (formData.city || 'Москва') : formData.city),
+          state: selectedMethod?.type === 'pickup' ? 'Москва' : (selectedMethod?.type === 'urgent' ? (formData.state || 'Москва') : formData.state),
+          zipCode: selectedMethod?.type === 'pickup' ? '' : formData.zipCode,
           country: selectedMethod?.type === 'pickup' ? 'Россия' : formData.country,
           pvzCdek: formData.pvzCdek || undefined,
           cdekPvzAddress: formData.cdekPvzAddress || undefined,
         },
         notes: formData.notes,
-        cdekPVZ: selectedCdekPVZ || formData.pvzCdek || null, // сохраняем выбранный ПВЗ
+        cdekPVZ: selectedCdekPVZ || formData.pvzCdek || null,
         callRequest: callRequest === 'yes',
       };
-      // Только для НЕ-СДЭК добавляем дату и время
       if (selectedMethod && selectedMethod.type !== 'cdek') {
         orderData.deliveryDate = selectedDeliveryDate;
-        // Сохраняем только полный интервал
         orderData.deliveryInterval = selectedDeliveryTime || undefined;
       }
-      
-      // Для СДЭК добавляем ожидаемую дату доставки и адрес ПВЗ
       if (selectedMethod && selectedMethod.type === 'cdek') {
         orderData.cdekDeliveryDate = cdekDeliveryDate;
         orderData.cdekPvzAddress = selectedCdekPVZ?.address_full || selectedCdekPVZ?.address || formData.cdekPvzAddress;
-        // Также передаем дату в поле estimatedDelivery для совместимости с админкой
+        orderData.cdekPvzCode = selectedCdekPVZ?.code || formData.cdekPvzCode;
         if (cdekDeliveryDate) {
           orderData.estimatedDelivery = cdekDeliveryDate;
         }
       }
 
-      console.log('📦 Отправляем данные заказа:', orderData);
+      // Отправляем запрос с или без токена в зависимости от авторизации
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/orders`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify(orderData)
       });
 
       if (response.ok) {
         const order = await response.json();
-        // --- Красивая модалка вместо confirm ---
-        if (isAuthenticated && user) {
-          const shouldSaveAddress = await askSaveAddress();
-          if (shouldSaveAddress) {
-            try {
-              const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/auth/profile`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                  firstName: formData.firstName,
-                  lastName: formData.lastName,
-                  phone: formData.phone,
-                  address: formData.address
-                })
-              });
-              if (updateResponse.ok) {
-                console.log('Адрес доставки сохранен в профиль');
-                dispatch(updateUser({
-                  firstName: formData.firstName,
-                  lastName: formData.lastName,
-                  phone: formData.phone,
-                  address: formData.address
-                }));
-              }
-            } catch (error) {
-              console.error('Ошибка при сохранении адреса в профиль:', error);
-            }
-          }
-        }
-        // --- Показываем красивую модалку ---
-        console.log('order after response:', order);
+        setLastOrder(order);
         setLastOrderId(order._id);
-        console.log('setLastOrderId:', order._id);
         setShowSuccessOrderModal(true);
-        console.log('setShowSuccessOrderModal: true');
         dispatch(clearCart());
         setIsCheckoutModalVisible(false);
-        // router.push(`/orders/${order._id}`); // редирект теперь через модалку
-        await refreshOrders(); // обновляем историю заказов
+        if (isAuthenticated) {
+          await refreshOrders();
+        }
       } else {
         const error = await response.json();
-        console.error('❌ Ошибка создания заказа:', error);
-        alert(error.message || 'Ошибка при оформлении заказа');
+        showErrorToast(error.message || 'Ошибка при оформлении заказа');
       }
     } catch (error) {
-      alert('Ошибка сети');
+      showErrorToast('Ошибка сети');
     } finally {
       setIsOrderProcessing(false);
     }
@@ -1257,9 +1238,11 @@ const CartPage: React.FC = () => {
       zipCode: pvzData.postalCode || '',
       pvzCdek: pvzData,
       cdekPvzAddress: pvzData.address_full || pvzData.address || '',
+      cdekPvzCode: pvzData.code || '',
     }));
     console.log('Выбран ПВЗ:', pvzData);
     console.log('Сохраняем cdekPvzAddress:', pvzData.address_full || pvzData.address || '');
+    console.log('Сохраняем cdekPvzCode:', pvzData.code || '');
     // --- Автоматический расчет даты доставки через API СДЭК ---
     try {
       const fromAddress = 'Митино'; // Было: 'Москва, Митино'
@@ -1520,6 +1503,107 @@ const CartPage: React.FC = () => {
 
   const isPhoneValid = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(formData.phone);
 
+  // --- Автозаполнение адреса из профиля ---
+  // Удаляю useEffect автозаполнения адреса из профиля (и любые связанные переменные)
+
+  // --- state для показа select выбора адреса ---
+  const [showAddressSelect, setShowAddressSelect] = useState(false);
+
+  // Новая простая логика автозаполнения:
+  const [wasAddressAutofilled, setWasAddressAutofilled] = useState(false);
+
+  useEffect(() => {
+    if (
+      isCheckoutModalVisible &&
+      user &&
+      isAuthenticated &&
+      !wasAddressAutofilled &&
+      !formData.address
+    ) {
+      setFormData(prev => ({
+        ...prev,
+        email: user.email || prev.email,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        phone: user.phone || prev.phone,
+        address: user.address || '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: 'Россия',
+      }));
+      setWasAddressAutofilled(true);
+    }
+  }, [isCheckoutModalVisible, user, isAuthenticated, wasAddressAutofilled, formData.address]);
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleOpenCheckoutModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+    setIsCheckoutModalVisible(true);
+  };
+
+  const handleAuthModalClose = () => {
+    setShowAuthModal(false);
+    setIsCheckoutModalVisible(true);
+  };
+
+  // Модальное окно для авторизации
+  const AuthModal = () => (
+    <motion.div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 30 }} 
+        animate={{ scale: 1, opacity: 1, y: 0 }} 
+        exit={{ scale: 0.9, opacity: 0, y: 30 }} 
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }} 
+        className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full relative overflow-hidden border border-gray-100"
+      >
+        <div className="flex flex-col items-center">
+          <ShoppingCart className="w-12 h-12 text-primary-500 mb-4 animate-bounce" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Войти в профиль?</h2>
+          <p className="text-gray-600 mb-6 text-center">
+            Для удобства оформления заказа и отслеживания статуса рекомендуем войти в систему.
+          </p>
+          <div className="flex gap-3 w-full justify-center">
+            <button 
+              onClick={() => {
+                setShowAuthModal(false);
+                router.push('/auth/login');
+              }} 
+              className="px-5 py-2 rounded-lg bg-primary-600 text-white font-semibold shadow hover:bg-primary-700 transition-all"
+            >
+              Войти
+            </button>
+            <button 
+              onClick={() => {
+                setShowAuthModal(false);
+                router.push('/auth/register');
+              }} 
+              className="px-5 py-2 rounded-lg bg-accent-500 text-white font-semibold shadow hover:bg-accent-600 transition-all"
+            >
+              Регистрация
+            </button>
+            <button 
+              onClick={handleAuthModalClose} 
+              className="px-5 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold shadow hover:bg-gray-300 transition-all"
+            >
+              Пропустить
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+
   // Показываем загрузку до тех пор, пока не загрузится клиент
   if (!isClient) {
     return (
@@ -1564,62 +1648,144 @@ const CartPage: React.FC = () => {
   // В рендере выбора способа доставки:
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 pt-32 pb-48">
+      <div className="min-h-screen bg-gray-100 md:bg-gray-50 pt-16 md:pt-40 pb-20 md:pb-48">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center mb-8">
+          <div className="flex items-center mb-4 md:mb-8">
             <button 
               onClick={() => router.back()}
-              className="mr-4 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              className="mr-3 md:mr-4 p-2 rounded-lg hover:bg-gray-200 transition-colors touch-target"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">Корзина</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Корзина</h1>
           </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
           {/* Список товаров */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Товары в корзине</h2>
-              {cartItems.map((item: CartItem) => (
-                <div key={item._id} className="flex items-center py-4 border-b border-gray-200 last:border-b-0">
-                  <div className="flex-shrink-0 w-20 h-20 mr-4">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      width={80}
-                      height={80}
-                      className="rounded-lg object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-600">SKU: {item.sku}</p>
-                    <p className="text-lg font-bold text-blue-600">{item.price.toLocaleString()} ₽</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
-                      className="p-1 rounded hover:bg-gray-100"
+            <div className="bg-transparent md:bg-white rounded-xl md:rounded-lg shadow-none md:shadow-md p-0 md:p-6 mb-4 md:mb-6">
+              <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Товары в корзине</h2>
+                              <div className="space-y-4 md:space-y-0">
+                  {cartItems.map((item: CartItem) => (
+                    <motion.div
+                      key={item._id}
+                      initial={{ opacity: 1 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="bg-white md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 shadow-sm md:shadow-none border md:border-0 border-gray-100 md:border-b md:border-gray-200 last:border-b-0"
                     >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-12 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
-                      className="p-1 rounded hover:bg-gray-100"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveItem(item._id)}
-                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                                         {/* Мобильная версия */}
+                     <div className="md:hidden flex items-start space-x-4">
+                       <Link href={`/product/${item.slug || item.sku || item._id}`} className="flex-shrink-0">
+                         <Image
+                           src={item.image}
+                           alt={item.name}
+                           width={80}
+                           height={80}
+                           className="w-20 h-20 object-contain rounded-xl bg-gray-50 border border-gray-200 p-2"
+                         />
+                       </Link>
+                       
+                       <div className="flex-1 min-w-0">
+                         <Link href={`/product/${item.slug || item.sku || item._id}`} className="hover:underline">
+                           <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-1 line-clamp-2">{item.name}</h3>
+                         </Link>
+                         <p className="text-xs text-gray-500 mb-2">Артикул: {item.sku}</p>
+                         <p className="text-lg font-bold text-primary-600 mb-3">{item.price.toLocaleString()} ₽</p>
+                         
+                         <div className="flex items-center justify-between">
+                           <div className="flex items-center bg-gray-50 rounded-xl">
+                             <button
+                               onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
+                               className="p-3 text-gray-600 hover:text-gray-800 touch-target"
+                             >
+                               <Minus className="w-4 h-4" />
+                             </button>
+                             <span className="px-4 py-3 font-semibold text-gray-900">{item.quantity}</span>
+                             <button
+                               onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
+                               className="p-3 text-gray-600 hover:text-gray-800 touch-target"
+                             >
+                               <Plus className="w-4 h-4" />
+                             </button>
+                           </div>
+                           
+                           <motion.button
+                             onClick={() => handleRemoveItem(item._id)}
+                             className="p-3 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl touch-target"
+                             whileTap={{ scale: 0.9 }}
+                             disabled={deletingItemId === item._id}
+                           >
+                             {deletingItemId === item._id ? (
+                               <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24">
+                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                               </svg>
+                             ) : (
+                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                               </svg>
+                             )}
+                           </motion.button>
+                         </div>
+                       </div>
+                     </div>
+
+                     {/* Десктопная версия */}
+                     <div className="hidden md:flex md:items-center py-4 border-b border-gray-200 last:border-b-0">
+                       <Link href={`/product/${item.slug || item.sku || item._id}`} className="flex-shrink-0 w-20 h-20 mr-4 group">
+                         <Image
+                           src={item.image}
+                           alt={item.name}
+                           width={80}
+                           height={80}
+                           style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+                           className="rounded-lg object-contain group-hover:scale-105 transition-transform duration-200 bg-white"
+                         />
+                       </Link>
+                       <div className="flex-1">
+                         <Link href={`/product/${item.slug || item.sku || item._id}`} className="hover:underline text-inherit">
+                           <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                         </Link>
+                         <p className="text-sm text-gray-600">SKU: {item.sku}</p>
+                         <p className="text-lg font-bold text-blue-600">{item.price.toLocaleString()} ₽</p>
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <button
+                           onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
+                           className="p-1 rounded hover:bg-gray-100"
+                         >
+                           <Minus className="w-4 h-4" />
+                         </button>
+                         <span className="w-12 text-center">{item.quantity}</span>
+                         <button
+                           onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
+                           className="p-1 rounded hover:bg-gray-100"
+                         >
+                           <Plus className="w-4 h-4" />
+                         </button>
+                         <motion.button
+                           onClick={() => handleRemoveItem(item._id)}
+                           className={`p-2 rounded focus:outline-none transition-all duration-200 ${deletingItemId === item._id ? 'bg-red-100 text-red-400 cursor-wait' : 'text-red-500 hover:text-red-700 hover:bg-red-50'}`}
+                           whileTap={deletingItemId === item._id ? {} : { scale: 0.85, rotate: -15 }}
+                           whileHover={deletingItemId === item._id ? {} : { scale: 1.1 }}
+                           transition={{ type: 'spring', stiffness: 300 }}
+                           disabled={deletingItemId === item._id}
+                         >
+                        {deletingItemId === item._id ? (
+                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                          </svg>
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                                                    )}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              ))}
             </div>
           </div>
 
@@ -1676,7 +1842,7 @@ const CartPage: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsCheckoutModalVisible(true)}
+                  onClick={handleOpenCheckoutModal}
                   disabled={cartItems.length === 0}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400"
                 >
@@ -1795,30 +1961,25 @@ const CartPage: React.FC = () => {
                                       {(() => {
                                         const methodWithCost = method as any;
                                         if (methodWithCost.costType === 'zone') {
-                                          const priceByZoneKey = zoneKey && methodWithZone.zonePrices && methodWithZone.zonePrices[zoneKey] !== undefined ? methodWithZone.zonePrices[zoneKey] : null;
-                                          if (zoneKey && priceByZoneKey !== null) {
-                                            return priceByZoneKey === 0 ? 'Бесплатно' : `${priceByZoneKey} ₽`;
+                                          const key = zoneKey || zoneResult;
+                                          if (methodWithCost.zonePrices && key && methodWithCost.zonePrices[key] !== undefined) {
+                                            return methodWithCost.zonePrices[key] === 0 ? 'Бесплатно' : `${methodWithCost.zonePrices[key]} ₽`;
                                           }
-                                          // fallback к zoneResult, если zoneKey нет или цены нет
-                                          if (zoneResult && zonePrice !== null && zonePrice !== undefined) {
-                                            return zonePrice === 0 ? 'Бесплатно' : `${zonePrice} ₽`;
-                                          }
-                                          // если ни zoneKey, ни zoneResult не дали цену:
-                                          return (
-                                            <span className="inline-flex items-center gap-1">
-                                              Узнать цену
-                                              <button type="button" onClick={() => setShowInfoModal(true)} className="ml-1 text-blue-500 hover:text-blue-700 focus:outline-none">
-                                                <Info size={16} />
-                                              </button>
-                                            </span>
-                                          );
+                                          return 'Цена уточняется';
                                         }
+
                                         if (methodWithCost.costType === 'percentage' && methodWithCost.costPercentage) {
                                           const subtotal = calculateSubtotal();
                                           const calculatedCost = Math.round(subtotal * (methodWithCost.costPercentage / 100));
                                           return calculatedCost === 0 ? 'Бесплатно' : `${calculatedCost} ₽`;
                                         } else if (methodWithCost.costType === 'fixed' && methodWithCost.fixedCost !== undefined) {
                                           return methodWithCost.fixedCost === 0 ? 'Бесплатно' : `${methodWithCost.fixedCost} ₽`;
+                                        } else if (methodWithCost.costType === 'fixed_plus_percentage' && methodWithCost.fixedCost !== undefined && methodWithCost.costPercentage) {
+                                          const subtotal = calculateSubtotal();
+                                          const fixedPart = methodWithCost.fixedCost;
+                                          const percentagePart = Math.round(subtotal * (methodWithCost.costPercentage / 100));
+                                          const totalCost = fixedPart + percentagePart;
+                                          return totalCost === 0 ? 'Бесплатно' : `${totalCost} ₽`;
                                         } else {
                                           const price = method.price;
                                           if (!price || price === 0 || price === null || price === undefined || String(price) === 'null') {
@@ -2026,24 +2187,15 @@ const CartPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
-                    <ReactInputMask
-                      mask="+7 (999) 999-99-99"
-                      maskChar={null}
+                    <IMaskInput
+                      mask="+7 (000) 000-00-00"
                       value={formData.phone}
-                      onChange={e => { handleInputChange(e); if (!phoneTouched) setPhoneTouched(true); }}
+                      onAccept={(value: string) => setFormData(prev => ({ ...prev, phone: value }))}
                       onBlur={() => setPhoneTouched(true)}
-                    >
-                      {(inputProps: any) => (
-                        <input
-                          {...inputProps}
-                          type="tel"
-                          name="phone"
-                          required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="+7 (___) ___-__-__"
-                        />
-                      )}
-                    </ReactInputMask>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+7 (___) ___-__-__"
+                      required
+                    />
                     {phoneTouched && !isPhoneValid && (
                       <div className="flex items-center mt-1 text-red-600 text-sm animate-fade-in">
                         <AlertTriangle className="w-4 h-4 mr-1" />
@@ -2053,60 +2205,13 @@ const CartPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div 
-                  id="callRequestContainer"
-                  className={`mt-4 p-4 rounded-lg border-2 transition-all duration-300 ${
-                    callRequestError 
-                      ? 'border-red-500 bg-red-50' 
-                      : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  <label className={`block text-sm font-medium mb-2 ${
-                    callRequestError ? 'text-red-700' : 'text-gray-700'
-                  }`}>
-                    Нужен ли вам звонок? *
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="callRequest"
-                        value="yes"
-                        checked={callRequest === 'yes'}
-                        onChange={(e) => {
-                          setCallRequest(e.target.value);
-                          setCallRequestError(false);
-                        }}
-                        className="mr-2 text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">Да, нужен звонок</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="callRequest"
-                        value="no"
-                        checked={callRequest === 'no'}
-                        onChange={(e) => {
-                          setCallRequest(e.target.value);
-                          setCallRequestError(false);
-                        }}
-                        className="mr-2 text-primary-600 focus:ring-primary-500"
-                      />
-                      <span className="text-sm text-gray-700">Нет, звонок не нужен</span>
-                    </label>
-                  </div>
-                  {callRequestError && (
-                    <div className="mt-2 text-sm text-red-600 font-medium">
-                      ⚠️ Пожалуйста, выберите нужен ли вам звонок
-                    </div>
-                  )}
-                </div>
+
 
                 {/* Адрес доставки с автоподсказками — для курьерских и СДЭК */}
                 {(() => {
                   const selectedMethod = deliveryMethods.find(m => m._id === selectedDeliveryMethod);
-                  const shouldShowAddress = selectedMethod && (selectedMethod.type === 'courier' || selectedMethod.type === 'cdek' || selectedMethod.type === 'urgent');
+                  // Показывать поле адреса, если НЕ выбран самовывоз (pickup)
+                  const shouldShowAddress = !selectedMethod || selectedMethod.type !== 'pickup';
                   if (!shouldShowAddress) return null;
                   const hasDeliveryMethodMismatch = selectedMethod && 
                     ((zoneResult === 'mkad' && selectedMethod.addressValidationType !== 'moscow_mkad') ||
@@ -2119,94 +2224,45 @@ const CartPage: React.FC = () => {
                           ⚠️ Выбранный способ доставки недоступен для данного адреса. Пожалуйста, выберите подходящий способ доставки.
                         </div>
                       )}
-                      
-                      {/* Кнопка "Изменить способ доставки" если есть адрес, но выбран способ без адреса */}
-                      {selectedMethod && selectedMethod.type === 'pickup' && (formData.address || formData.city || formData.state || formData.zipCode) && (
-                        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                          <div className="flex items-center justify-between">
-                            <span>Вы ввели адрес доставки. Хотите выбрать доставку?</span>
-                            <button
-                              type="button"
-                              onClick={() => setShowDeliveryMethodSelector(true)}
-                              className="text-blue-600 hover:text-blue-800 font-medium underline"
-                            >
-                              Изменить способ доставки
-                            </button>
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-0">
+                          Адрес доставки
+                        </label>
+                        {profileAddresses.length > 0 && (
+                          <button
+                            type="button"
+                            className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200"
+                            onClick={() => setShowAddressSelect((v) => !v)}
+                          >
+                            Выбрать из профиля
+                          </button>
+                        )}
+                      </div>
+                      {showAddressSelect && profileAddresses.length > 0 && (
+                        <select
+                          className="mb-2 w-full border border-gray-300 rounded-lg px-3 py-2"
+                          onChange={e => {
+                            const addr = profileAddresses.find(a => a.id === e.target.value);
+                            if (addr) {
+                              setFormData(prev => ({
+                                ...prev,
+                                address: addr.address || '',
+                                city: addr.city || '',
+                                state: addr.state || '',
+                                zipCode: addr.zipCode || '',
+                                country: addr.country || 'Россия',
+                              }));
+                              setShowAddressSelect(false);
+                            }
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Выберите адрес из профиля</option>
+                          {profileAddresses.map(addr => (
+                            <option key={addr.id} value={addr.id}>{addr.name}: {addr.address}</option>
+                          ))}
+                        </select>
                       )}
-                      
-                      {/* Кнопка "Изменить способ доставки" если выбран способ доставки, но нет адреса */}
-                      {selectedMethod && (selectedMethod.type === 'courier' || selectedMethod.type === 'cdek' || selectedMethod.type === 'urgent') && !formData.address && (
-                        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                          <div className="flex items-center justify-between">
-                            <span>Выбрана доставка. Хотите выбрать самовывоз?</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowDeliveryMethodSelector(true);
-                                // Очищаем адрес при открытии селектора способов доставки
-                                setFormData(prev => ({
-                                  ...prev,
-                                  address: '',
-                                  city: '',
-                                  state: '',
-                                  zipCode: '',
-                                  country: 'Россия',
-                                  lat: null,
-                                  lng: null
-                                }));
-                                // Сбрасываем выбранный ПВЗ
-                                setSelectedCdekPVZ(null);
-                                // Сбрасываем результат определения зоны, чтобы показывались все способы доставки
-                                setZoneResult(null);
-                                setZoneKey(null);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 font-medium underline ml-4"
-                            >
-                              Изменить
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Кнопка "Изменить способ доставки" для всех случаев, когда способ доставки выбран и есть адрес */}
-                      {selectedMethod && formData.address && (
-                        <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                          <div className="flex items-center justify-between">
-                            <span>Хотите изменить способ доставки?</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowDeliveryMethodSelector(true);
-                                // Очищаем адрес при открытии селектора способов доставки
-                                setFormData(prev => ({
-                                  ...prev,
-                                  address: '',
-                                  city: '',
-                                  state: '',
-                                  zipCode: '',
-                                  country: 'Россия',
-                                  lat: null,
-                                  lng: null
-                                }));
-                                // Сбрасываем выбранный ПВЗ
-                                setSelectedCdekPVZ(null);
-                                // Сбрасываем результат определения зоны, чтобы показывались все способы доставки
-                                setZoneResult(null);
-                                setZoneKey(null);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 font-medium underline ml-4"
-                            >
-                              Изменить
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                        {selectedMethod && selectedMethod.type === 'cdek' ? 'Поиск ПВЗ' : 'Адрес доставки'}
-                      </label>
                       <input
                         type="text"
                         id="address"
@@ -2260,7 +2316,6 @@ const CartPage: React.FC = () => {
                                     animate={selectedCdekPVZ?.code === pvz.code ? { backgroundColor: '#e0f2fe', borderColor: '#3b82f6' } : { backgroundColor: '#fff', borderColor: '#e5e7eb' }}
                                     transition={{ duration: 0.2 }}
                                     className={`p-4 border rounded-lg transition-all ${selectedCdekPVZ?.code === pvz.code ? 'border-blue-500 bg-blue-100' : 'border-gray-200 bg-white'}`}
-                                    // onClick убираем, чтобы клик по карточке ничего не делал
                                   >
                                     <div className="font-semibold">{pvz.name}</div>
                                     <div className="text-sm text-gray-600">{pvz.address_full || pvz.address}</div>
@@ -2301,15 +2356,23 @@ const CartPage: React.FC = () => {
                             {cdekPVZList.length > 0 && (
                               <div className="mb-2 text-sm text-gray-500">
                                 Найдено ПВЗ в радиусе: {(() => {
-                                  // Определяем использованный радиус из window.__cdekDebug
                                   if (typeof window !== 'undefined' && window.__cdekDebug && window.__cdekDebug.usedRadius) {
                                     return `${window.__cdekDebug.usedRadius} км`;
                                   }
-                                  // Fallback: вычисляем максимальное расстояние среди найденных ПВЗ
                                   const maxDistance = Math.max(...cdekPVZList.map(pvz => pvz._distance || 0));
                                   const radiusKm = Math.ceil(maxDistance / 1000);
                                   return `${radiusKm} км`;
                                 })()}
+                              </div>
+                            )}
+                            {cdekPVZList.length > 0 && !selectedCdekPVZ && !formData.pvzCdek && (
+                              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <div className="flex items-center text-orange-700">
+                                  <AlertTriangle className="w-4 h-4 mr-2" />
+                                  <span className="text-sm font-medium">
+                                    Для продолжения необходимо выбрать пункт выдачи СДЭК
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -2334,7 +2397,55 @@ const CartPage: React.FC = () => {
                     error={paymentError}
                   />
                 )}
-
+                <div 
+                  id="callRequestContainer"
+                  className={`mt-4 p-4 rounded-lg border-2 transition-all duration-300 ${
+                    callRequestError 
+                      ? 'border-red-500 bg-red-50' 
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <label className={`block text-sm font-medium mb-2 ${
+                    callRequestError ? 'text-red-700' : 'text-gray-700'
+                  }`}>
+                    Нужен ли вам звонок? *
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="callRequest"
+                        value="yes"
+                        checked={callRequest === 'yes'}
+                        onChange={(e) => {
+                          setCallRequest(e.target.value);
+                          setCallRequestError(false);
+                        }}
+                        className="mr-2 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700">Да, нужен звонок</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="callRequest"
+                        value="no"
+                        checked={callRequest === 'no'}
+                        onChange={(e) => {
+                          setCallRequest(e.target.value);
+                          setCallRequestError(false);
+                        }}
+                        className="mr-2 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700">Нет, звонок не нужен</span>
+                    </label>
+                  </div>
+                  {callRequestError && (
+                    <div className="mt-2 text-sm text-red-600 font-medium">
+                      ⚠️ Пожалуйста, выберите нужен ли вам звонок
+                    </div>
+                  )}
+                </div>
                 {/* Примечания к заказу */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Комментарий к заказу</label>
@@ -2379,7 +2490,12 @@ const CartPage: React.FC = () => {
                   <button
                     type="submit"
                     className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                    disabled={cartItems.length === 0 || deliveryLoading || paymentLoading}
+                    disabled={
+                      cartItems.length === 0 || 
+                      deliveryLoading || 
+                      paymentLoading || 
+                      (selectedMethod && selectedMethod.type === 'cdek' && (!selectedCdekPVZ && !formData.pvzCdek))
+                    }
                   >
                     Подтвердить заказ
                   </button>
@@ -2411,49 +2527,47 @@ const CartPage: React.FC = () => {
         onClose={handleSaveAddressModalClose}
         onSave={handleSaveAddressModalSave}
       />
-      <SuccessOrderModal
-        open={showSuccessOrderModal}
-        orderId={lastOrderId || ''}
-        onGoToOrder={handleGoToOrder}
-        onGoHome={handleGoHome}
-      />
+      {showSuccessOrderModal && (
+  <SuccessOrderModal
+    open={showSuccessOrderModal}
+    orderId={lastOrderId || ''}
+    orderNumber={lastOrder?.orderNumber || ''}
+    onGoToOrder={handleGoToOrder}
+    onGoHome={handleGoHome}
+    isAuthenticated={isAuthenticated}
+  />
+)}
       
       {/* Модальное окно для уведомления о выборе звонка */}
       {showCallRequestModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl"
           >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <PhoneIcon className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Выберите нужен ли вам звонок
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Пожалуйста, выберите нужен ли вам звонок для подтверждения заказа
+            <div className="text-center">
+              <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Подтвердите заказ</h3>
+              <p className="text-gray-600">
+                Пожалуйста, выберите, нужно ли вам, чтобы менеджер перезвонил для подтверждения заказа
               </p>
             </div>
-            
-            <div className="flex justify-center">
-              <button
-                onClick={() => {
-                  setShowCallRequestModal(false);
-                  // Автоматически закрываем модальное окно через 2 секунды
-                  setTimeout(() => setShowCallRequestModal(false), 2000);
-                }}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors"
-              >
-                Понятно
-              </button>
-            </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
+      {/* Модалка авторизации */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <AuthModal />
+        )}
+      </AnimatePresence>
     </div>
   </Layout>
   );

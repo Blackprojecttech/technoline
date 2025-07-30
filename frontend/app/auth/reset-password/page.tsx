@@ -6,11 +6,14 @@ import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import MobileNavigation from '@/components/layout/MobileNavigation';
 
 export default function ResetPasswordPage() {
-  const { resetPassword } = useAuth();
+  const { resetPassword, user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   
@@ -29,6 +32,13 @@ export default function ResetPasswordPage() {
       setError('Отсутствует токен для сброса пароля');
     }
   }, [token]);
+
+  // Редирект для уже авторизованных пользователей (если у них нет токена сброса)
+  useEffect(() => {
+    if (!authLoading && user && !token) {
+      router.push('/profile');
+    }
+  }, [user, authLoading, token, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +64,35 @@ export default function ResetPasswordPage() {
     }
   };
 
+  // Показываем загрузку пока проверяется авторизация
+  if (authLoading) {
+    return (
+      <>
+        <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+        <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверяем авторизацию...</p>
+          </div>
+        </div>
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Если пользователь авторизован и нет токена, не показываем форму (редирект произойдет через useEffect)
+  if (user && !token) {
+    return null;
+  }
+
   if (error && !token) {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gray-50 pt-32">
+        <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0">
           <div className="container mx-auto px-4 py-12">
             <div className="max-w-md mx-auto">
               <motion.div
@@ -90,8 +124,8 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <Header />
-      <div className="min-h-screen bg-gray-50 pt-32">
+      <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+      <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -232,7 +266,12 @@ export default function ResetPasswordPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* Футер - скрыт на мобильных */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+      
+      <MobileNavigation />
     </>
   );
 } 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
 import Link from 'next/link';
@@ -8,9 +8,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import MobileNavigation from '@/components/layout/MobileNavigation';
+
+// Для корректного расширения window
+declare global {
+  interface Window {
+    onTelegramAuth?: (user: any) => void;
+  }
+}
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
   const [formData, setFormData] = useState({
@@ -21,6 +29,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Редирект для уже авторизованных пользователей
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/profile');
+    }
+  }, [user, authLoading, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -28,7 +43,13 @@ export default function LoginPage() {
     
     try {
       await login(formData.email, formData.password);
-      router.push('/profile');
+      
+      // Проверяем наличие параметра redirect в URL
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectUrl = searchParams.get('redirect');
+      
+      // Перенаправляем на указанную страницу или на профиль по умолчанию
+      router.push(redirectUrl || '/profile');
     } catch (error: any) {
       setError(error.message || 'Ошибка входа');
     } finally {
@@ -37,14 +58,84 @@ export default function LoginPage() {
   };
 
   const handleOAuth = (provider: string) => {
-    // TODO: Реализовать OAuth
-    console.log(`${provider} OAuth`);
+    if (provider === 'google') {
+      window.location.href = '/api/auth/google';
+    } else if (provider === 'yandex') {
+      window.location.href = '/api/auth/yandex';
+    } else if (provider === 'telegram') {
+      window.location.href = '/api/auth/telegram';
+    }
   };
+
+  useEffect(() => {
+    // Добавляем Telegram Login Widget только на клиенте
+    if (typeof window !== 'undefined') {
+      // Удаляем старый виджет, если есть
+      const old = document.getElementById('telegram-login-script');
+      if (old) old.remove();
+      // Создаём функцию-обработчик
+      window.onTelegramAuth = function(user: any) {
+        fetch('http://localhost:5002/api/auth/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.token) {
+            localStorage.setItem('authToken', data.token);
+            window.location.href = '/profile';
+          } else {
+            alert('Ошибка Telegram авторизации');
+          }
+        });
+      };
+      // Добавляем скрипт Telegram
+      const script = document.createElement('script');
+      script.id = 'telegram-login-script';
+      script.src = 'https://telegram.org/js/telegram-widget.js?7';
+      script.async = true;
+      script.setAttribute('data-telegram-login', 'oauthtechno_bot');
+      script.setAttribute('data-size', 'large');
+      script.setAttribute('data-userpic', 'false');
+      script.setAttribute('data-request-access', 'write');
+      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      const container = document.getElementById('telegram-login-widget');
+      if (container) {
+        container.innerHTML = '';
+        container.appendChild(script);
+      }
+    }
+  }, []);
+
+  // Показываем загрузку пока проверяется авторизация
+  if (authLoading) {
+    return (
+      <>
+        <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+        <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверяем авторизацию...</p>
+          </div>
+        </div>
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Если пользователь авторизован, не показываем форму входа (редирект произойдет через useEffect)
+  if (user) {
+    return null;
+  }
 
   return (
     <>
-      <Header />
-      <div className="min-h-screen bg-gray-50 pt-32">
+      <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+      <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -158,49 +249,6 @@ export default function LoginPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-                className="mt-6"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Или войдите через</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('google')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Google</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('yandex')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Яндекс</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('telegram')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Telegram</span>
-                  </motion.button>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
                 transition={{ delay: 0.9 }}
                 className="mt-8 text-center"
               >
@@ -213,7 +261,12 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* Футер - скрыт на мобильных */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+      
+      <MobileNavigation />
     </>
   );
 } 

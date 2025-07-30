@@ -12,7 +12,7 @@ interface DeliveryMethod {
   workingHours?: string;
   address?: string;
   restrictions?: string;
-  costType?: 'fixed' | 'percentage' | 'zone';
+  costType?: 'fixed' | 'percentage' | 'zone' | 'fixed_plus_percentage';
   fixedCost?: number;
   costPercentage?: number;
   // Поля для пользовательских интервалов
@@ -48,7 +48,7 @@ export const useDeliveryMethods = (): UseDeliveryMethodsReturn => {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api'}/delivery/active`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api'}/delivery/active`);
         
         if (!response.ok) {
           throw new Error('Ошибка при загрузке способов доставки');

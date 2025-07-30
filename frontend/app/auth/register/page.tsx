@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
@@ -8,17 +9,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import MobileNavigation from '@/components/layout/MobileNavigation';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  // Редирект для уже авторизованных пользователей
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/profile');
+    }
+  }, [user, authLoading, router]);
   
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    middleName: '',
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zipCode: '',
     password: '',
     confirmPassword: ''
   });
@@ -26,6 +41,10 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +64,22 @@ export default function RegisterPage() {
       await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
+        middleName: formData.middleName || undefined,
         email: formData.email,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zipCode: formData.zipCode || undefined,
         password: formData.password
       });
-      router.push('/profile');
+
+      // Проверяем наличие параметра redirect в URL
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectUrl = searchParams.get('redirect');
+      
+      // Перенаправляем на указанную страницу или на профиль по умолчанию
+      router.push(redirectUrl || '/profile');
     } catch (error: any) {
       setError(error.message || 'Ошибка регистрации');
     } finally {
@@ -63,10 +92,50 @@ export default function RegisterPage() {
     console.log(`${provider} OAuth`);
   };
 
+  // Функция для получения подсказок Dadata
+  const fetchAddressSuggestions = async (query: string) => {
+    if (!query || query.length < 2) {
+      setAddressSuggestions([]);
+      return;
+    }
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const res = await fetch(`/api/addresses/search?q=${encodedQuery}`);
+      const data = await res.json();
+      setAddressSuggestions(data.suggestions || []);
+    } catch (e) {
+      setAddressSuggestions([]);
+    }
+  };
+
+  // Показываем загрузку пока проверяется авторизация
+  if (authLoading) {
+    return (
+      <>
+        <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+        <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Проверяем авторизацию...</p>
+          </div>
+        </div>
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Если пользователь авторизован, не показываем форму регистрации (редирект произойдет через useEffect)
+  if (user) {
+    return null;
+  }
+
   return (
     <>
-      <Header />
-      <div className="min-h-screen bg-gray-50 pt-32">
+      <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
+      <div className="min-h-screen bg-gray-50 pt-32 pb-16 md:pb-0">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -122,6 +191,7 @@ export default function RegisterPage() {
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         placeholder="Имя"
+                        autoComplete="given-name"
                         required
                       />
                     </div>
@@ -143,11 +213,31 @@ export default function RegisterPage() {
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         placeholder="Фамилия"
+                        autoComplete="family-name"
                         required
                       />
                     </div>
                   </motion.div>
                 </div>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.55 }}
+                >
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Отчество (необязательно)
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      value={formData.middleName}
+                      onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Отчество (если есть)"
+                    />
+                  </div>
+                </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -165,6 +255,7 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="Введите email"
+                      autoComplete="email"
                       required
                     />
                   </div>
@@ -179,14 +270,40 @@ export default function RegisterPage() {
                     Телефон
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="+7 (999) 123-45-67"
-                    />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                    <div className="pl-10">
+                      <PhoneInput
+                        country={'ru'}
+                        value={formData.phone}
+                        onChange={phone => setFormData({ ...formData, phone })}
+                        inputClass="!w-full !pl-12 !pr-4 !py-3 !border !border-gray-300 !rounded-lg !focus:ring-2 !focus:ring-green-500 !focus:border-transparent"
+                        buttonClass="!border-none !bg-transparent"
+                        dropdownClass="!z-50"
+                        containerClass="!w-full"
+                        onlyCountries={['ru', 'by', 'kz', 'uz', 'kg', 'az', 'am', 'ge', 'md', 'ee', 'lv', 'lt']}
+                        localization={{
+                          ru: 'Россия',
+                          by: 'Беларусь',
+                          kz: 'Казахстан',
+                          uz: 'Узбекистан',
+                          kg: 'Киргизия',
+                          az: 'Азербайджан',
+                          am: 'Армения',
+                          ge: 'Грузия',
+                          md: 'Молдова',
+                          ee: 'Эстония',
+                          lv: 'Латвия',
+                          lt: 'Литва'
+                        }}
+                        placeholder="Введите номер телефона"
+                        enableSearch
+                        disableSearchIcon={false}
+                        autoFormat
+                        disableCountryCode={false}
+                        disableDropdown={false}
+                        countryCodeEditable={false}
+                      />
+                    </div>
                   </div>
                 </motion.div>
 
@@ -203,10 +320,45 @@ export default function RegisterPage() {
                     <input
                       type="text"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      onChange={e => {
+                        setFormData({ ...formData, address: e.target.value });
+                        setShowAddressSuggestions(true);
+                        fetchAddressSuggestions(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (formData.address.length > 1) {
+                          setShowAddressSuggestions(true);
+                          fetchAddressSuggestions(formData.address);
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 200)}
+                      ref={addressInputRef}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="Введите адрес доставки"
+                      autoComplete="off"
                     />
+                    {showAddressSuggestions && addressSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full z-20 bg-white border border-gray-200 rounded-b-lg shadow-lg max-h-56 overflow-y-auto animate-fade-in">
+                        {addressSuggestions.map((s: any, idx: number) => (
+                          <div
+                            key={s.value + idx}
+                            className="px-4 py-2 cursor-pointer hover:bg-green-50 text-sm text-gray-800"
+                            onMouseDown={() => {
+                              setFormData({
+                                ...formData,
+                                address: s.value,
+                                city: s.data.city || s.data.settlement_with_type || s.data.settlement || '',
+                                state: s.data.region_with_type || '',
+                                zipCode: s.data.postal_code || ''
+                              });
+                              setShowAddressSuggestions(false);
+                            }}
+                          >
+                            {s.value}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
 
@@ -226,6 +378,7 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="Введите пароль"
+                      autoComplete="new-password"
                       required
                     />
                     <button
@@ -254,6 +407,7 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                       className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="Подтвердите пароль"
+                      autoComplete="new-password"
                       required
                     />
                     <button
@@ -278,48 +432,7 @@ export default function RegisterPage() {
                 </motion.button>
               </form>
 
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
-                className="mt-6"
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Или зарегистрируйтесь через</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('google')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Google</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('yandex')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Яндекс</span>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleOAuth('telegram')}
-                    className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-gray-700">Telegram</span>
-                  </motion.button>
-                </div>
-              </motion.div>
+              {/* Блок соцсетей и Telegram Login Widget удалён */}
 
               <motion.div
                 initial={{ opacity: 0 }}
@@ -336,7 +449,12 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* Футер - скрыт на мобильных */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+      
+      <MobileNavigation />
     </>
   );
 } 

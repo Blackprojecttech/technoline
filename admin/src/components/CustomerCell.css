@@ -1,0 +1,39 @@
+/* Анимация для VIP-клиентов (ПОСТОЯННИК) */
+@keyframes vip-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  }
+}
+
+/* Дополнительная анимация мерцания для звезды */
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 5px #FFD700;
+  }
+  50% {
+    opacity: 0.7;
+    text-shadow: 0 0 10px #FFD700, 0 0 15px #FFA500;
+  }
+}
+
+/* Применяем анимацию мерцания к звезде в теге */
+.vip-tag {
+  animation: vip-pulse 2s infinite;
+}
+
+.vip-tag::before {
+  animation: star-twinkle 1.5s infinite;
+} 

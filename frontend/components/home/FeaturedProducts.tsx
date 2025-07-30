@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Star, Heart, ShoppingCart, Eye } from 'lucide-react';
 import { useFeaturedProducts, Product } from '../../hooks/useProducts';
+import { fixProductsImageUrls } from '../../utils/imageUrl';
 
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
@@ -74,7 +75,7 @@ export default function FeaturedProducts() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((product) => (
+          {fixProductsImageUrls(products).map((product) => (
             <div
               key={product._id}
               className={`group relative bg-white border border-light-200 rounded-2xl p-6 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-primary-500/25 ${
@@ -178,7 +179,7 @@ export default function FeaturedProducts() {
         {/* View all products button */}
         <div className="text-center mt-12">
           <Link
-            href="/products"
+                            href="/catalog"
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg"
           >
             Смотреть все товары

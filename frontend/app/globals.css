@@ -26,6 +26,59 @@
     overflow-x: hidden;
     width: 100%;
   }
+
+  /* Мобильные улучшения - только для экранов меньше 768px */
+  @media (max-width: 767px) {
+    html {
+      font-size: 14px;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      -webkit-overflow-scrolling: touch;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    
+    /* Разрешаем выделение для текстовых элементов на мобильных */
+    input, textarea, p, span, div[contenteditable] {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Убираем зум при фокусе на input на iOS */
+    input[type="color"],
+    input[type="date"],
+    input[type="datetime"],
+    input[type="datetime-local"],
+    input[type="email"],
+    input[type="month"],
+    input[type="number"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="text"],
+    input[type="time"],
+    input[type="url"],
+    input[type="week"],
+    select:focus,
+    textarea {
+      font-size: 16px;
+    }
+  }
 }
 
 @layer components {
@@ -56,6 +109,78 @@
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
+
+  /* Мобильные стили - только для экранов меньше 768px */
+  @media (max-width: 767px) {
+    /* App-like кнопки для мобильных */
+    .btn {
+      @apply py-3 rounded-xl min-h-[44px] relative overflow-hidden;
+    }
+    
+    .btn:active {
+      transform: scale(0.98);
+    }
+    
+    .btn-primary {
+      @apply shadow-lg;
+    }
+
+    /* App-like инпуты для мобильных */
+    .input {
+      @apply px-4 py-3 rounded-xl text-base min-h-[44px] transition-all duration-200;
+    }
+
+    .input:focus {
+      @apply shadow-lg;
+    }
+    
+    /* App-like карточки для мобильных */
+    .card {
+      @apply rounded-2xl shadow-sm border-gray-100 overflow-hidden;
+    }
+
+    .card-elevated {
+      @apply rounded-2xl shadow-lg border-gray-100 overflow-hidden;
+    }
+  }
+
+  /* Мобильная навигация */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-xl z-50;
+    height: 80px;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center py-3 px-3 text-xs font-medium text-gray-600 hover:text-primary-600 transition-colors duration-200;
+    min-height: 72px;
+  }
+
+  .mobile-nav-item.active {
+    @apply text-primary-600;
+  }
+
+  /* Touch-friendly элементы */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Безопасная зона для iPhone */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 @layer utilities {
@@ -70,6 +195,18 @@
   
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Pull-to-refresh стили для PWA */
+  .pull-to-refresh-container {
+    overflow-anchor: none;
+  }
+  
+  /* Предотвращаем bounce эффект Safari только для pull-to-refresh */
+  @supports (-webkit-appearance: none) {
+    .pull-to-refresh-active {
+      overscroll-behavior-y: contain;
+    }
   }
   
   /* Кастомная прокрутка для выпадающих меню */
@@ -109,4 +246,128 @@
     width: auto !important;
     height: auto !important;
   }
+
+  /* Утилиты для мобильной адаптации */
+  @media (max-width: 767px) {
+    .mobile-only {
+      display: block !important;
+    }
+    
+    .mobile-hidden {
+      display: none !important;
+    }
+
+    /* Полноэкранные модальные окна на мобильных */
+    .modal-mobile-fullscreen {
+      @apply fixed inset-0 m-0 rounded-none max-w-none max-h-none;
+    }
+
+    /* Анимации для мобильных */
+    .slide-up {
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .slide-down {
+      animation: slideDown 0.3s ease-out;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .mobile-only {
+      display: none !important;
+    }
+    
+    .mobile-hidden {
+      display: block !important;
+    }
+  }
+
+  /* Тени для App-like дизайна */
+  .shadow-app {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-app-lg {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+} 
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Принудительный z-index для мобильного меню */
+.mobile-menu-overlay {
+  z-index: 9998 !important;
+  position: fixed !important;
+}
+
+.mobile-menu-panel {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+/* Кастомный скроллбар для мобильного меню */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 3px;
+  margin: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+  border: 1px solid #f1f5f9;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background: #64748b;
+}
+
+/* Для Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+  scroll-behavior: smooth;
+}
+
+/* Добавляем smooth scrolling для мобильного меню */
+.mobile-menu-panel .scrollbar-thin {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 } 

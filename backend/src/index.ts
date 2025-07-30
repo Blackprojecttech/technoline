@@ -8,8 +8,8 @@ import dotenv from 'dotenv';
 import { connectDB } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { syncService } from './services/syncService';
+import { proxyMiddleware, proxyCorsMiddleware, proxyStatsMiddleware } from './middleware/proxy';
 import { Category } from './models/Category';
-import { syncCategoryPages } from './utils/syncCategoryPages';
 import { fork } from 'child_process';
 import path from 'path';
 import http from 'http';
@@ -28,7 +28,23 @@ import uploadRoutes from './routes/upload';
 import deliveryRoutes from './routes/delivery';
 import addressesRoutes from './routes/addresses';
 import paymentMethodsRoutes from './routes/paymentMethods';
+import characteristicsRoutes from './routes/characteristics';
+import characteristicGroupsRoutes from './routes/characteristicGroups';
 import cdekRoutes from './routes/cdek';
+import notificationsRoutes from './routes/notifications';
+import suppliersRoutes from './routes/suppliers';
+import arrivalsRoutes from './routes/arrivals';
+import receiptsRoutes from './routes/receipts';
+import debtsRoutes from './routes/debts';
+import simpleDebtsRoutes from './routes/simpleDebts';
+import paymentsRoutes from './routes/payments';
+import clientsRoutes from './routes/clients';
+import clientRecordsRoutes from './routes/clientRecords';
+import adminActionsRoutes from './routes/adminActions';
+import sberRecipientsRoutes from './routes/sberRecipients';
+import eventsRoutes from './routes/events';
+import referralsRoutes from './routes/referrals';
+import serviceTemplatesRoutes from './routes/serviceTemplates';
 
 dotenv.config();
 
@@ -41,6 +57,7 @@ export const io = new SocketIOServer(server, {
   cors: {
     origin: [
       process.env.FRONTEND_URL || 'http://localhost:3000',
+      process.env.ADMIN_URL || 'http://localhost:3200',
       'http://localhost:3100',
       'http://localhost:3200',
       'http://localhost:3201',
@@ -55,7 +72,19 @@ export const io = new SocketIOServer(server, {
       /^https:\/\/.*\.render\.com$/, // any render subdomain
       /^http:\/\/localhost:\d+$/, // any localhost port
       /^https:\/\/.*\.netlify\.app$/, // netlify
-      /^https:\/\/.*\.netlify\.com$/ // netlify custom domains
+      /^https:\/\/.*\.netlify\.com$/, // netlify custom domains
+      // Local network access (private IP ranges)
+      /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // 192.168.x.x network
+      /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/, // 10.x.x.x network
+      /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/, // 172.16-31.x.x network
+      // Localtunnel domains
+      'https://technoline.loca.lt',
+      'https://technoline-admin.loca.lt',
+      'https://technoline-api.loca.lt',
+      /^https:\/\/.*\.loca\.lt$/, // any localtunnel subdomain
+      /^https:\/\/.*\.loca\.it$/, // alternative localtunnel domain
+      /^https:\/\/.*\.ngrok\.io$/, // ngrok domains
+      /^https:\/\/.*\.ngrok-free\.app$/ // ngrok free domains
     ],
     credentials: true
   }
@@ -83,29 +112,49 @@ io.on('connection', (socket) => {
 });
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
+}));
+
+// Proxy middleware (должен быть первым)
+app.use(proxyMiddleware);
+app.use(proxyStatsMiddleware);
+
+// Handle preflight requests first
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  console.log('🔄 Preflight request from origin:', origin);
+  
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, Expires, x-referral-code');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  res.header('Access-Control-Expose-Headers', 'X-User-Role, X-Can-Edit');
+  res.sendStatus(204);
+});
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3100', // frontend
-    'http://localhost:3200', // admin panel
-    'http://localhost:3201', // admin panel
-    'http://localhost:3202', // admin panel
-    'http://localhost:3203', // admin panel
-    'http://localhost:50438', // vercel dev
-    'https://*.vercel.app', // vercel production
-    'https://*.railway.app', // railway
-    'https://*.render.com', // render
-    /^https:\/\/.*\.vercel\.app$/, // any vercel subdomain
-    /^https:\/\/.*\.railway\.app$/, // any railway subdomain
-    /^https:\/\/.*\.render\.com$/, // any render subdomain
-    /^http:\/\/localhost:\d+$/, // any localhost port
-    /^https:\/\/.*\.netlify\.app$/, // netlify
-    /^https:\/\/.*\.netlify\.com$/ // netlify custom domains
-  ],
+  origin: function (origin, callback) {
+    console.log('🌐 CORS request from origin:', origin);
+    callback(null, true); // Разрешаем все origins для отладки
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Access-Control-Allow-Headers'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+    'X-Requested-With',
+    'Access-Control-Allow-Headers',
+    'cache-control',
+    'pragma',
+    'expires',
+    'x-referral-code'
+  ],
+  exposedHeaders: ['X-User-Role', 'X-Can-Edit'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
@@ -119,8 +168,8 @@ const limiter = rateLimit({
 // app.use('/api/', limiter);
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Compression
 app.use(compression());
@@ -139,18 +188,13 @@ app.use('/uploads', (req, res, next) => {
 }, express.static('uploads'));
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
 });
-
-// Manual sync endpoint
-
-// Handle preflight requests
-app.options('*', cors());
 
 // ОТКЛЮЧАЕМ ETag и Last-Modified для всех роутов
 app.set('etag', false);
@@ -162,6 +206,12 @@ app.use((req, res, next) => {
 // Глобальный логгер для всех запросов
 app.use((req, res, next) => {
   console.log('>>> GLOBAL REQUEST', req.method, req.originalUrl, req.query);
+  next();
+});
+
+// Глобальный логгер для auth роутов
+app.use('/api/auth', (req, res, next) => {
+  console.log('>>> AUTH REQUEST', req.method, req.originalUrl, req.body);
   next();
 });
 
@@ -178,12 +228,28 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/addresses', addressesRoutes);
 app.use('/api/payment-methods', paymentMethodsRoutes);
+app.use('/api/characteristics', characteristicsRoutes);
+app.use('/api/characteristic-groups', characteristicGroupsRoutes);
 // Глобальный логгер для /api/cdek/*
 app.use('/api/cdek', (req, res, next) => {
   console.log('>>> GLOBAL /api/cdek/*', req.method, req.originalUrl, req.query);
   next();
 });
 app.use('/api/cdek', cdekRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/arrivals', arrivalsRoutes);
+app.use('/api/receipts', receiptsRoutes);
+app.use('/api/debts', debtsRoutes);
+app.use('/api/simple-debts', simpleDebtsRoutes);
+app.use('/api/payments', paymentsRoutes);
+app.use('/api/clients', clientsRoutes);
+app.use('/api/client-records', clientRecordsRoutes);
+app.use('/api/admin-actions', adminActionsRoutes);
+app.use('/api/sber-recipients', sberRecipientsRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/referrals', referralsRoutes);
+app.use('/api/service-templates', serviceTemplatesRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
@@ -288,30 +354,27 @@ const startServer = async () => {
     
     // Create initial categories
     await createInitialCategories();
-    
-    // Sync category pages
-    syncCategoryPages();
 
-    // Запуск скрипта отслеживания изменений
-    fork(path.resolve(__dirname, '../../scripts/changelog-watcher.js'));
+    // Запуск скрипта отслеживания изменений (опционально)
+    try {
+      fork(path.resolve(__dirname, '../../scripts/changelog-watcher.js'));
+      console.log('📝 Changelog watcher started');
+    } catch (error) {
+      console.warn('⚠️  Changelog watcher not available:', error instanceof Error ? error.message : error);
+    }
     
-    server.listen(PORT, () => {
+    const host = '0.0.0.0'; // Слушаем на всех интерфейсах
+    server.listen(Number(PORT), host, () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
+      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🔄 Sync endpoint: http://localhost:${PORT}/api/sync`);
-      console.log(`🟢 Socket.IO: ws://localhost:${PORT}`);
+      console.log(`🌐 Network access: http://0.0.0.0:${PORT}/api`);
+      console.log(`🌐 Local network: http://192.168.50.69:${PORT}/api`);
     });
-
-    // Start automatic sync service
-    // syncService.startSync();
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    // Don't exit the process, just log the error
-    // This allows the server to run for demo purposes
+    console.error('❌ Error starting server:', error);
+    process.exit(1);
   }
 };
 
 startServer();
-
-export default app; 

@@ -1,0 +1,44 @@
+.adaptive-select .ant-select-selection-item {
+  font-size: 14px;
+  transition: font-size 0.2s;
+}
+
+.adaptive-select .ant-select-selection-item.ant-select-selection-item-overflow {
+  font-size: 12px;
+}
+
+.adaptive-select .ant-select-selection-item.ant-select-selection-item-overflow-wrap {
+  font-size: 10px;
+}
+
+.adaptive-text {
+  font-size: 14px;
+  transition: font-size 0.2s;
+}
+
+@media screen and (max-width: 1200px) {
+  .adaptive-text {
+    font-size: 13px;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .adaptive-text {
+    font-size: 12px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .adaptive-text {
+    font-size: 11px;
+  }
+}
+
+.ant-select-dropdown .ant-select-item-option-content {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.ant-select-dropdown .adaptive-text {
+  font-size: 14px !important;
+} 

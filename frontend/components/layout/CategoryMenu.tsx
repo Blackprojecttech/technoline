@@ -11,7 +11,7 @@ export default function CategoryMenu() {
   const { categories, loading } = useCategories();
 
   return (
-    <div className="relative">
+    <div className="relative hidden md:block">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-1 text-secondary-700 hover:text-primary-600 transition-colors duration-200 font-medium"

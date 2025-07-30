@@ -84,6 +84,7 @@ const OrdersPage: React.FC = () => {
       case 'shipped': return 'bg-indigo-100 text-indigo-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'with_courier': return 'bg-cyan-100 text-cyan-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -96,15 +97,18 @@ const OrdersPage: React.FC = () => {
       case 'shipped': return 'Отправлен';
       case 'delivered': return 'Доставлен';
       case 'cancelled': return 'Отменен';
+      case 'with_courier': return 'Передан курьеру';
       default: return status;
     }
   };
 
   const getPaymentMethodText = (method: string) => {
     switch (method) {
-      case 'card': return 'Банковская карта';
-      case 'cash': return 'Наличными при получении';
-      case 'bank_transfer': return 'Банковский перевод';
+      case 'cash_on_delivery': return 'Наличными при получении';
+      case 'bank_card': return 'Банковской картой';
+      case 'sberbank_transfer': return 'Перевод на Карту Сбербанка';
+      case 'credit_purchase': return 'Купить в кредит';
+      case 'usdt_payment': return 'Оплата USDT';
       default: return method;
     }
   };

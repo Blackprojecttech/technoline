@@ -11,7 +11,7 @@ export const useProfileSocket = ({ orderIds = [], onOrderUpdate }: ProfileSocket
 
   useEffect(() => {
     // Создаем подключение к Socket.IO (убираем /api из URL)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
     const socketUrl = apiUrl.replace('/api', '');
     
     console.log('🔌 Profile connecting to Socket.IO:', socketUrl);

@@ -30,7 +30,7 @@ export default function CallbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-light-50 to-accent-50">
-      <Header />
+      <Header onNotificationClick={() => window.openNotificationDrawer?.()} />
       <main className="pt-32 lg:pt-40 pb-16">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-2xl mx-auto">

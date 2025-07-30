@@ -24,7 +24,8 @@ export const useCategories = () => {
       try {
         setLoading(true);
         
-        const response = await fetch('http://localhost:5002/api/categories');
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
+        const response = await fetch(`${API_BASE_URL}/categories`);
         
         if (!response.ok) {
           throw new Error('Ошибка загрузки категорий');

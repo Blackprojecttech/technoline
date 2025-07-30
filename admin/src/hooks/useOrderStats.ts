@@ -13,6 +13,9 @@ interface OrderStats {
   todayProfit: number;
   monthRevenue: number;
   monthProfit: number;
+  // Уведомления
+  callRequests: number;
+  newOrders: number;
 }
 
 async function fetchOrderStats(): Promise<OrderStats> {
@@ -20,7 +23,7 @@ async function fetchOrderStats(): Promise<OrderStats> {
   if (!token) throw new Error('No auth token');
   
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL || 'http://localhost:5002/api'}/orders/stats`,
+    `${import.meta.env.VITE_API_URL || 'https://technoline-api.loca.lt/api'}/orders/stats`,
     {
       headers: { 'Authorization': `Bearer ${token}` }
     }
@@ -41,6 +44,6 @@ export const useOrderStats = () => {
     cacheTime: 5 * 60 * 1000, // 5 минут
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    refetchInterval: false, // Отключаем автоматическое обновление
+    // refetchInterval: 30 * 1000, // отключено
   });
 }; 

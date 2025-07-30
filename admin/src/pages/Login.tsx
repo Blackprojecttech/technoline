@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   // Редирект если уже авторизован
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard')
+      navigate('/admin/dashboard')
     }
   }, [isAuthenticated, navigate])
 

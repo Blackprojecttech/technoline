@@ -7,6 +7,7 @@ interface CartItem {
   quantity: number
   image: string
   sku: string
+  slug?: string
 }
 
 interface CartState {
@@ -61,7 +62,7 @@ const loadCartFromStorage = (): CartState => {
   }
 }
 
-const initialState: CartState = loadCartFromStorage()
+const initialState: CartState = { items: [], total: 0, itemCount: 0 }
 
 const cartSlice = createSlice({
   name: 'cart',
@@ -101,8 +102,13 @@ const cartSlice = createSlice({
         localStorage.removeItem('cart')
       }
     },
+    hydrate: (state, action: PayloadAction<CartState>) => {
+      state.items = action.payload.items
+      state.total = action.payload.total
+      state.itemCount = action.payload.itemCount
+    },
   },
 })
 
-export const { addItem, removeItem, updateQuantity, clearCart } = cartSlice.actions
+export const { addItem, removeItem, updateQuantity, clearCart, hydrate } = cartSlice.actions
 export default cartSlice.reducer 

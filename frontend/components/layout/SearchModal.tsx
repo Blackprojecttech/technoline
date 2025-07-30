@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Search, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { fixImageUrl } from '../../utils/imageUrl'
 
 interface SearchModalProps {
   open: boolean
@@ -115,7 +116,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                         className="flex space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
                       >
                         <img
-                          src={product.mainImage || '/placeholder-product.jpg'}
+                          src={fixImageUrl(product.mainImage) || '/placeholder-product.jpg'}
                           alt={product.name}
                           className="w-12 h-12 object-cover rounded"
                         />

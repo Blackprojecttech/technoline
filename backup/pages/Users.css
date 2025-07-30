@@ -1,0 +1,188 @@
+/* Стили для страницы пользователей */
+
+/* Анимация для постоянных клиентов */
+.regular-user-row {
+  background: linear-gradient(90deg, rgba(250, 173, 20, 0.05) 0%, rgba(250, 173, 20, 0.02) 100%);
+  animation: regularPulse 3s infinite;
+  border-left: 3px solid #faad14;
+}
+
+@keyframes regularPulse {
+  0%, 100% {
+    background: linear-gradient(90deg, rgba(250, 173, 20, 0.05) 0%, rgba(250, 173, 20, 0.02) 100%);
+  }
+  50% {
+    background: linear-gradient(90deg, rgba(250, 173, 20, 0.1) 0%, rgba(250, 173, 20, 0.05) 100%);
+  }
+}
+
+/* Анимация для онлайн пользователей */
+.online-user-row {
+  background: linear-gradient(90deg, rgba(82, 196, 26, 0.05) 0%, rgba(82, 196, 26, 0.02) 100%);
+  animation: onlinePulse 2s infinite;
+  border-left: 3px solid #52c41a;
+}
+
+@keyframes onlinePulse {
+  0%, 100% {
+    background: linear-gradient(90deg, rgba(82, 196, 26, 0.05) 0%, rgba(82, 196, 26, 0.02) 100%);
+  }
+  50% {
+    background: linear-gradient(90deg, rgba(82, 196, 26, 0.1) 0%, rgba(82, 196, 26, 0.05) 100%);
+  }
+}
+
+/* Стили для таблицы пользователей */
+.users-table .ant-table-tbody > tr:hover > td {
+  background: rgba(59, 130, 246, 0.05) !important;
+  transition: background-color 0.3s ease;
+}
+
+.users-table .ant-table-tbody > tr > td {
+  padding: 12px 8px;
+  transition: all 0.3s ease;
+}
+
+/* Анимация для кнопок */
+.users-table .ant-btn {
+  transition: all 0.3s ease;
+}
+
+.users-table .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Стили для статистических карточек */
+.users-stats .ant-card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.users-stats .ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Анимация для иконки короны */
+.ant-table-tbody .crown-icon {
+  animation: crownGlow 2s infinite;
+}
+
+@keyframes crownGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(250, 173, 20, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(250, 173, 20, 0.8));
+  }
+}
+
+/* Стили для фильтров */
+.users-filters .ant-select {
+  transition: all 0.3s ease;
+}
+
+.users-filters .ant-select:hover {
+  transform: translateY(-1px);
+}
+
+/* Анимация для тегов статуса */
+.ant-table-tbody .ant-tag {
+  transition: all 0.3s ease;
+}
+
+.ant-table-tbody .ant-tag:hover {
+  transform: scale(1.05);
+}
+
+/* Стили для аватаров */
+.ant-table-tbody .ant-avatar {
+  transition: all 0.3s ease;
+}
+
+.ant-table-tbody .ant-avatar:hover {
+  transform: scale(1.1);
+}
+
+/* Анимация для строк с постоянными клиентами при наведении */
+.regular-user-row:hover {
+  background: linear-gradient(90deg, rgba(250, 173, 20, 0.15) 0%, rgba(250, 173, 20, 0.08) 100%) !important;
+  transform: translateX(4px);
+}
+
+/* Анимация для строк с онлайн пользователями при наведении */
+.online-user-row:hover {
+  background: linear-gradient(90deg, rgba(82, 196, 26, 0.15) 0%, rgba(82, 196, 26, 0.08) 100%) !important;
+  transform: translateX(4px);
+}
+
+/* Стили для сортировки */
+.ant-table-thead > tr > th {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.ant-table-thead > tr > th:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.ant-table-thead > tr > th.ant-table-column-sort {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Анимация для статистики */
+.users-stats .ant-statistic-content {
+  transition: all 0.3s ease;
+}
+
+.users-stats .ant-statistic-content:hover {
+  transform: scale(1.05);
+}
+
+/* Стили для модального окна */
+.ant-modal-content {
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Анимация для кнопок действий */
+.users-actions .ant-btn {
+  transition: all 0.3s ease;
+}
+
+.users-actions .ant-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Стили для пагинации */
+.ant-pagination-item {
+  transition: all 0.3s ease;
+}
+
+.ant-pagination-item:hover {
+  transform: scale(1.1);
+}
+
+/* Анимация для загрузки */
+.users-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.users-loading .ant-spin-dot {
+  animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+} 

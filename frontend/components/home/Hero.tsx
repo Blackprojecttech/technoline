@@ -4,12 +4,32 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+interface Particle {
+  id: number;
+  left: number;
+  top: number;
+  animationDelay: number;
+  animationDuration: number;
+}
+
 export default function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Генерируем частицы только на клиенте
+    const newParticles: Particle[] = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      animationDelay: Math.random() * 2,
+      animationDuration: 2 + Math.random() * 3
+    }));
+    setParticles(newParticles);
+    
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % 3);
     }, 5000);
@@ -45,23 +65,23 @@ export default function Hero() {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-light-50 to-accent-50"></div>
       
-      {/* Animated particles */}
+      {/* Animated particles - рендерим только после hydration */}
       <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
+        {particles.map((particle) => (
           <div
-            key={i}
+            key={particle.id}
             className="absolute w-2 h-2 bg-primary-300 rounded-full opacity-30 animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 3}s`
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`
             }}
           />
         ))}
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-20">
+      <div className="relative z-10 container mx-auto px-4 py-8 md:py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <div className={`text-secondary-800 transition-all duration-1000 ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0'}`}>
@@ -71,24 +91,24 @@ export default function Hero() {
               </span>
             </div>
             
-            <h1 className="text-5xl lg:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold mb-6 leading-tight">
               <span className="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
                 {slides[currentSlide].title}
               </span>
             </h1>
             
-            <h2 className="text-2xl lg:text-3xl font-semibold mb-4 text-secondary-700">
+            <h2 className="text-lg md:text-2xl lg:text-3xl font-semibold mb-4 text-secondary-700">
               {slides[currentSlide].subtitle}
             </h2>
             
-            <p className="text-lg text-secondary-600 mb-8 max-w-lg">
+            <p className="text-base md:text-lg text-secondary-600 mb-8 max-w-lg">
               {slides[currentSlide].description}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
               <Link 
-                href="/products"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg"
+                href="/catalog"
+                className="inline-flex items-center px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-semibold rounded-2xl md:rounded-full transition-all duration-300 transform hover:scale-105 hover:shadow-2xl shadow-lg text-center justify-center"
               >
                 Смотреть товары
                 <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,31 +118,31 @@ export default function Hero() {
               
               <Link 
                 href="/about"
-                className="inline-flex items-center px-8 py-4 border-2 border-primary-400 text-primary-700 hover:bg-primary-50 font-semibold rounded-full transition-all duration-300"
+                className="inline-flex items-center px-6 md:px-8 py-3 md:py-4 border-2 border-primary-400 text-primary-700 hover:bg-primary-50 font-semibold rounded-2xl md:rounded-full transition-all duration-300 text-center justify-center"
               >
                 Узнать больше
               </Link>
             </div>
             
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 mt-12">
+            <div className="grid grid-cols-3 gap-3 md:gap-6 mt-8 md:mt-12">
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary-600">1000+</div>
-                <div className="text-sm text-secondary-600">Товаров</div>
+                <div className="text-xl md:text-3xl font-bold text-primary-600">1000+</div>
+                <div className="text-xs md:text-sm text-secondary-600">Товаров</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary-600">50K+</div>
-                <div className="text-sm text-secondary-600">Клиентов</div>
+                <div className="text-xl md:text-3xl font-bold text-primary-600">50K+</div>
+                <div className="text-xs md:text-sm text-secondary-600">Клиентов</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-primary-600">24/7</div>
-                <div className="text-sm text-secondary-600">Поддержка</div>
+                <div className="text-xl md:text-3xl font-bold text-primary-600">24/7</div>
+                <div className="text-xs md:text-sm text-secondary-600">Поддержка</div>
               </div>
             </div>
           </div>
 
-          {/* Image */}
-          <div className={`relative transition-all duration-1000 ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
+          {/* Image - скрыт на мобильных */}
+          <div className={`relative transition-all duration-1000 hidden md:block ${isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'}`}>
             <div className="relative">
               {/* Floating device mockup */}
               <div className="relative w-full h-96 lg:h-[500px] bg-gradient-to-br from-primary-100 to-accent-100 rounded-3xl backdrop-blur-sm border border-primary-200 p-8 shadow-xl">
@@ -142,11 +162,18 @@ export default function Hero() {
               </div>
             </div>
           </div>
+
+          {/* Мобильная иконка товара */}
+          <div className="md:hidden text-center mt-8">
+            <div className="text-8xl mb-4">
+              📱
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Slide indicators */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
         {slides.map((_, index) => (
           <button
             key={index}

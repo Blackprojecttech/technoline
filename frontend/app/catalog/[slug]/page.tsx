@@ -1,116 +1,118 @@
-import { notFound } from 'next/navigation';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+'use client';
+
+import Layout from '@/components/layout/Layout';
 import CategoryProducts from '@/components/CategoryProducts';
-import { ChevronRight } from 'lucide-react';
+import CatalogFilters, { CatalogFiltersState } from '@/components/CatalogFilters';
+import { useState, useMemo } from 'react';
 
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-  description?: string;
-}
+export default function CategoryPage({ params }: { params: { slug?: string } }) {
+  const slug = params?.slug || '';
+  const isAll = !slug || slug === 'all';
+  const [filters, setFilters] = useState<CatalogFiltersState>({
+    searchQuery: '',
+    priceMin: '',
+    priceMax: '',
+    inStock: true,
+    brand: '',
+    rating: '',
+    onlyDiscount: false,
+    colors: [],
+  });
+  const [productsInCategory, setProductsInCategory] = useState<any[]>([]);
 
-interface CategoryPageProps {
-  params: {
-    slug: string;
-  };
-}
+  // Цветовые синонимы для удаления из модели
+  const COLOR_SYNONYMS = [
+    'черный', 'black', 'midnight', 'phantom black', 'graphite',
+    'белый', 'white',
+    'серебристый', 'silver',
+    'синий', 'blue', 'pacific blue', 'navy', 'dark blue',
+    'красный', 'red',
+    'зеленый', 'green',
+    'серый', 'gray', 'grey', 'space gray', 'space grey',
+    'золотой', 'gold', 'golden', 'starlight',
+    'розовый', 'pink', 'rose gold',
+    'фиолетовый', 'purple', 'violet', 'deep purple', 'lavender',
+    'оранжевый', 'orange',
+  ];
 
-// Отключаем кэширование для динамических страниц
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+  // Технические синонимы для удаления из модели
+  const TECH_SYNONYMS = [
+    'usb', 'magsafe', 'bluetooth', 'case', 'charging', 'wireless', 'lightning', 'type-c', 'type c', 'typec', 'c', 'with', 'and', 'наушники', 'гарнитура', 'наушник', 'чехол', 'зарядка', 'корпус', 'адаптер', 'адаптеры', 'провод', 'кабель', 'mic', 'microphone', 'микрофон', 'аккумулятор', 'батарея', 'power', 'protection', 'защита', 'plus', 'premium', 'original', 'оригинал', 'oem', 'copy', 'копия', 'новый', 'new', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010'
+  ];
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = params;
+  // Получаем уникальные модели из товаров (например, Airpods 3, Airpods Max 2024)
+  const modelButtons = useMemo(() => {
+    // Берём только товары этой категории
+    const products = productsInCategory;
+    if (!products || products.length === 0) return [];
+    const models = products.map(p => {
+      let name = p.name;
+      // Удаляем все синонимы цветов и технические слова из названия
+      [...COLOR_SYNONYMS, ...TECH_SYNONYMS].forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        name = name.replace(regex, '');
+      });
+      // Удаляем все скобки, дефисы, запятые, точки и другие неалфавитно-цифровые символы
+      name = name.replace(/[\(\)\[\]\{\}\-_,.?!:;"'`~@#$%^&*+=<>\/\\|]/g, '');
+      // Удаляем лишние пробелы
+      name = name.replace(/\s{2,}/g, ' ').replace(/^[,\s]+|[,\s]+$/g, '');
+      // Пример: ищем подстроку после 'Apple ' и до конца строки
+      const match = name.match(/Apple\s+([A-Za-z0-9 ]+(?: [A-Za-z0-9]+)?)/i);
+      if (match && match[1]) return toTitleCase(match[1].trim());
+      // Альтернатива: ищем Airpods ...
+      const airpods = name.match(/Airpods[^,]*/i);
+      if (airpods) return toTitleCase(airpods[0].trim());
+      const earpods = name.match(/Earpods[^,]*/i);
+      if (earpods) return toTitleCase(earpods[0].trim());
+      return null;
+    }).filter(Boolean);
 
-  // Получаем данные категории
-  let category: Category | null = null;
-  let error: string | null = null;
-  let debugInfo: any = {};
-
-  try {
-    const categoryResponse = await fetch(`http://127.0.0.1:5002/api/categories/${slug}`, { 
-      cache: 'no-store',
-      next: { revalidate: 0 },
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    debugInfo.status = categoryResponse.status;
-    if (categoryResponse.ok) {
-      category = await categoryResponse.json();
-      debugInfo.category = category;
-    } else {
-      error = `Failed to fetch category: ${categoryResponse.status}`;
-      debugInfo.error = error;
+    function toTitleCase(str: string) {
+      return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
     }
-  } catch (err) {
-    error = `Network error: ${err instanceof Error ? err.message : 'Unknown error'}`;
-    debugInfo.error = error;
-  }
-
-  // Не вызываем notFound(), чтобы всегда видеть debug-блок
+    // Уникальные модели
+    return Array.from(new Set(models));
+  }, [productsInCategory]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-light-50 to-accent-50">
-      <Header />
-      <main className="pt-32 pb-16">
-        <div className="container mx-auto px-4 py-8">
-          {/* Debug Info */}
-          <div className="mb-4 p-4 bg-blue-100 border border-blue-400 rounded">
-            <p className="text-sm text-blue-800 font-bold">DEBUG PAGE INFO</p>
-            <p className="text-sm text-blue-800">Slug: {slug}</p>
-            <p className="text-sm text-blue-800">Error: {error ? error : 'нет'}</p>
-            <p className="text-sm text-blue-800">Category: {category ? JSON.stringify(category) : 'нет'}</p>
-            <p className="text-sm text-blue-800">Debug: {JSON.stringify(debugInfo)}</p>
-          </div>
-
-          {/* Breadcrumbs */}
-          <nav className="flex items-center space-x-2 text-sm text-secondary-600 mb-8">
-            <a href="/" className="hover:text-primary-600">Главная</a>
-            <ChevronRight size={16} />
-            <a href="/catalog" className="hover:text-primary-600">Категории</a>
-            <ChevronRight size={16} />
-            <span className="text-secondary-800 font-medium">{category?.name || slug}</span>
-          </nav>
-
-          {/* Category Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-secondary-800 mb-4">{category?.name || slug}</h1>
-            {category?.description && (
-              <p className="text-lg text-secondary-600 max-w-3xl">{category.description}</p>
+    <Layout>
+      <div className="container mx-auto px-4 py-8 flex gap-8 pt-40">
+        {/* Фильтры слева */}
+        <aside className="w-72 shrink-0 hidden lg:block">
+          <div className="bg-white rounded-2xl shadow p-6 mb-6">
+            {productsInCategory.length > 0 && (
+              <CatalogFilters filters={filters} onChange={setFilters} hideBrandFilter={true} products={productsInCategory} />
             )}
           </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded">
-              <p className="text-sm text-red-800">
-                <strong>Error:</strong> {error}
-              </p>
+        </aside>
+        {/* Правая часть: товары */}
+        <section className="flex-1 min-w-0">
+          {/* Быстрые кнопки фильтрации по моделям */}
+          {modelButtons.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
+                key="all-models"
+                className={`px-4 py-1 rounded-full border text-sm font-medium transition-colors duration-200
+                  ${!filters.searchQuery ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-primary-50'}`}
+                onClick={() => setFilters(f => ({ ...f, searchQuery: '' }))}
+              >
+                Все
+              </button>
+              {modelButtons.map(model => (
+                <button
+                  key={model}
+                  className={`px-4 py-1 rounded-full border text-sm font-medium transition-colors duration-200
+                    ${filters.searchQuery === model ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-primary-50'}`}
+                  onClick={() => setFilters(f => ({ ...f, searchQuery: model }))}
+                >
+                  {model}
+                </button>
+              ))}
             </div>
           )}
-
-          {/* Force Render CategoryProducts */}
-          <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
-            <p className="text-sm text-green-800 font-bold">FORCE RENDER CATEGORY PRODUCTS</p>
-            <p className="text-sm text-green-800">Category Slug: {slug}</p>
-            <p className="text-sm text-green-800">Component should render below:</p>
-          </div>
-
-          {/* Products Grid */}
-          <CategoryProducts categorySlug={slug} />
-
-          {/* Force Render Debug */}
-          <div className="mt-8 p-4 bg-purple-100 border border-purple-400 rounded">
-            <p className="text-sm text-purple-800 font-bold">AFTER CATEGORY PRODUCTS RENDER</p>
-            <p className="text-sm text-purple-800">If you see this, CategoryProducts rendered</p>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+          <CategoryProducts categorySlug={isAll ? '' : slug} filters={filters} onProductsLoaded={setProductsInCategory} />
+        </section>
+      </div>
+    </Layout>
   );
 } 

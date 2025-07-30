@@ -33,7 +33,8 @@ export function useProducts() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5002/api/products');
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
+        const response = await fetch(`${API_BASE_URL}/products`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch products');
@@ -64,7 +65,8 @@ export function useFeaturedProducts() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5002/api/products/featured?limit=6');
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
+        const response = await fetch(`${API_BASE_URL}/products/featured?limit=6`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch featured products');

@@ -1,3 +1,8 @@
+@import 'antd/dist/reset.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html, body {
   overflow-x: hidden;
   /* overflow-y: auto; */
@@ -7,10 +12,6 @@ html, body {
   margin: 0;
   padding: 0;
 }
-@import 'antd/dist/reset.css';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 /* Кастомные стили для админки */
 .custom-menu .ant-menu-item {
@@ -31,6 +32,48 @@ html, body {
 
 .custom-menu .ant-menu-item-selected:hover {
   background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+}
+
+/* Мобильные стили для меню */
+.mobile-menu .ant-menu-item {
+  border-radius: 12px !important;
+  margin: 4px 8px !important;
+  transition: all 0.3s ease !important;
+  padding: 12px 16px !important;
+  height: auto !important;
+  line-height: 1.4 !important;
+}
+
+.mobile-menu .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  transform: translateX(4px) !important;
+}
+
+.mobile-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+}
+
+.mobile-menu .ant-menu-item .ant-menu-title-content {
+  margin-left: 12px !important;
+}
+
+/* Мобильный overlay */
+.mobile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Анимации для карточек */
@@ -60,6 +103,31 @@ html, body {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
+/* Мобильные стили для модалок */
+@media (max-width: 768px) {
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px !important;
+  }
+  
+  .ant-modal-content {
+    border-radius: 16px !important;
+  }
+  
+  .ant-modal-header {
+    border-radius: 16px 16px 0 0 !important;
+    padding: 16px 20px !important;
+  }
+  
+  .ant-modal-body {
+    padding: 20px !important;
+  }
+  
+  .ant-modal-footer {
+    padding: 16px 20px !important;
+  }
+}
+
 /* Стили для уведомлений */
 .notification-success {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
@@ -71,68 +139,466 @@ html, body {
   box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3) !important;
 }
 
+/* Мобильные стили для уведомлений */
+@media (max-width: 768px) {
+  .ant-notification {
+    margin-right: 16px !important;
+    margin-left: 16px !important;
+    width: calc(100vw - 32px) !important;
+  }
+}
+
 /* Улучшенные стили для кнопок */
-.btn-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  border: none !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-  transition: all 0.3s ease !important;
+
+/* Стили для dropdown меню профиля */
+.ant-dropdown {
+  z-index: 9999 !important;
 }
 
-.btn-gradient:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4) !important;
+.ant-dropdown-menu {
+  margin-top: 8px !important;
 }
 
-/* Стили для карточек статистики */
-.stat-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%) !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  transition: all 0.3s ease !important;
+/* Стили для popover профиля */
+.ant-popover {
+  z-index: 9999 !important;
 }
 
-.stat-card:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
+.ant-popover-inner {
 }
 
-/* Стили для заголовков */
-.gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-}
-
-/* Улучшенные стили для форм */
-.form-input {
+.ant-dropdown-menu {
   border-radius: 12px !important;
-  border: 2px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.ant-dropdown-menu-item {
+  border-radius: 8px !important;
+  margin: 4px 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: rgba(102, 126, 234, 0.1) !important;
+  transform: translateX(4px) !important;
+}
+
+.ant-dropdown-menu-item-divider {
+  margin: 8px 0 !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Стили для дашборда */
+.dashboard-page-responsive {
+  padding: 24px;
+}
+
+/* Мобильные стили для дашборда */
+@media (max-width: 768px) {
+  .dashboard-page-responsive {
+    padding: 16px 0 !important;
+  }
+}
+
+.dashboard-orders-table .ant-table-thead > tr > th {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+}
+
+.dashboard-orders-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 12px 16px !important;
+}
+
+.dashboard-orders-table .ant-table-tbody > tr:hover > td {
+  background: rgba(102, 126, 234, 0.05) !important;
+}
+
+.dashboard-orders-table .ant-table-tbody > tr {
+  transition: all 0.2s ease !important;
+}
+
+.dashboard-orders-table .ant-table-tbody > tr:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Мобильные стили для таблиц */
+@media (max-width: 768px) {
+  .ant-table {
+    font-size: 12px !important;
+  }
+  
+  .ant-table-thead > tr > th {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  
+  .ant-table-wrapper {
+    overflow-x: auto !important;
+  }
+  
+  .ant-table-container {
+    min-width: 600px !important;
+  }
+  
+  /* Скрытие некоторых колонок на мобильных */
+  .ant-table-tbody .mobile-hide {
+    display: none !important;
+  }
+  
+  .ant-table-thead .mobile-hide {
+    display: none !important;
+  }
+}
+
+.ant-btn {
+  border-radius: 8px !important;
   transition: all 0.3s ease !important;
 }
 
-.form-input:focus {
-  border-color: #667eea !important;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+.ant-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Стили для скроллбара */
-::-webkit-scrollbar {
-  width: 8px;
+/* Мобильные стили для кнопок */
+@media (max-width: 768px) {
+  .ant-btn {
+    min-width: 44px !important;
+    height: 40px !important;
+    font-size: 14px !important;
+  }
+  
+  .ant-btn-sm {
+    min-width: 36px !important;
+    height: 32px !important;
+    font-size: 12px !important;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+/* Стили для сайдбара */
+.ant-layout-sider {
+  transition: all 0.3s ease !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 4px;
+.ant-layout-sider-collapsed {
+  transition: all 0.3s ease !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+/* Стили для кнопки сворачивания сайдбара */
+.sidebar-toggle-btn {
+  transition: all 0.3s ease !important;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Анимация для логотипа при сворачивании */
+.sidebar-logo {
+  transition: all 0.3s ease !important;
+}
+
+/* Стили для счетчиков в свернутом состоянии */
+.ant-layout-sider-collapsed .pending-count,
+.ant-layout-sider-collapsed .call-count {
+  display: none !important;
+}
+
+/* Улучшенные стили для меню в свернутом состоянии */
+.ant-layout-sider-collapsed .ant-menu-item {
+  padding: 0 16px !important;
+  text-align: center !important;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item .ant-menu-title-content {
+  display: none !important;
+}
+
+/* Стили для тултипов в свернутом состоянии */
+.ant-layout-sider-collapsed .ant-menu-item {
+  position: relative !important;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item:hover::after {
+  content: attr(title) !important;
+  position: absolute !important;
+  left: 100% !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  z-index: 1000 !important;
+  margin-left: 8px !important;
+}
+
+/* Анимация для контента при изменении размера сайдбара */
+.ant-layout-content {
+  transition: margin-left 0.3s ease !important;
+}
+
+/* Стили для иконок в свернутом состоянии */
+.ant-layout-sider-collapsed .ant-menu-item .anticon {
+  font-size: 16px !important;
+  margin: 0 !important;
+}
+
+/* Улучшенные стили для счетчиков */
+.pending-count, .call-count, .withdrawal-count {
+  transition: all 0.3s ease !important;
+}
+
+/* Стили для анимации появления/исчезновения */
+.fade-enter {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Мобильные стили для форм */
+@media (max-width: 768px) {
+  .ant-form-item {
+    margin-bottom: 16px !important;
+  }
+  
+  .ant-form-item-label {
+    padding-bottom: 4px !important;
+  }
+  
+  .ant-input, .ant-select-selector, .ant-picker, .ant-input-number {
+    height: 44px !important;
+    font-size: 16px !important; /* Предотвращает зум на iOS */
+  }
+  
+  .ant-input-number-input {
+    height: 42px !important;
+    font-size: 16px !important;
+  }
+  
+  .ant-select-selection-item {
+    line-height: 42px !important;
+    font-size: 16px !important;
+  }
+  
+  .ant-picker-input input {
+    font-size: 16px !important;
+  }
+}
+
+/* Мобильные стили для карточек */
+@media (max-width: 768px) {
+  .ant-card {
+    margin-bottom: 16px !important;
+  }
+  
+  .ant-card-head {
+    padding: 12px 16px !important;
+    min-height: auto !important;
+  }
+  
+  .ant-card-head-title {
+    font-size: 16px !important;
+  }
+  
+  .ant-card-body {
+    padding: 16px !important;
+  }
+  
+  .ant-card-extra {
+    font-size: 14px !important;
+  }
+}
+
+/* Мобильные стили для статистических карточек */
+@media (max-width: 768px) {
+  .ant-statistic {
+    text-align: center !important;
+  }
+  
+  .ant-statistic-title {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+}
+
+/* Мобильные стили для пагинации */
+@media (max-width: 768px) {
+  .ant-pagination {
+    text-align: center !important;
+    margin-top: 16px !important;
+  }
+  
+  .ant-pagination-item, .ant-pagination-prev, .ant-pagination-next {
+    min-width: 36px !important;
+    height: 36px !important;
+    line-height: 34px !important;
+    margin-right: 4px !important;
+  }
+  
+  .ant-pagination-jump-prev, .ant-pagination-jump-next {
+    min-width: 36px !important;
+    height: 36px !important;
+    line-height: 34px !important;
+  }
+  
+  .ant-pagination-options {
+    display: none !important;
+  }
+}
+
+/* Мобильные стили для вкладок */
+@media (max-width: 768px) {
+  .ant-tabs-nav {
+    margin-bottom: 16px !important;
+  }
+  
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+  
+  .ant-tabs-content-holder {
+    padding: 0 !important;
+  }
+}
+
+/* Мобильные стили для селектов и дропдаунов */
+@media (max-width: 768px) {
+  .ant-select-dropdown {
+    max-height: 60vh !important;
+  }
+  
+  .ant-dropdown-menu {
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Стили для мобильного touch интерфейса */
+@media (max-width: 768px) {
+  /* Увеличиваем область клика для кнопок */
+  .ant-btn {
+    padding: 8px 16px !important;
+    touch-action: manipulation !important;
+  }
+  
+  /* Улучшаем прокрутку на мобильных */
+  .ant-table-body {
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .ant-layout-content {
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Убираем hover эффекты на touch устройствах */
+  @media (hover: none) {
+    .ant-btn:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    
+    .custom-menu .ant-menu-item:hover {
+      transform: none !important;
+    }
+    
+    .mobile-menu .ant-menu-item:hover {
+      transform: none !important;
+    }
+  }
+}
+
+/* Стили для ландшафтной ориентации на мобильных */
+@media (max-width: 768px) and (orientation: landscape) {
+  .ant-layout-content {
+    padding: 8px !important;
+  }
+  
+  .mobile-sidebar {
+    width: 240px !important;
+  }
+}
+
+/* Стили для очень маленьких экранов */
+@media (max-width: 480px) {
+  .ant-layout-content {
+    margin: 4px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  
+  .mobile-sidebar {
+    width: 260px !important;
+  }
+  
+  .ant-card-body {
+    padding: 12px !important;
+  }
+  
+  .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+}
+
+/* Адаптивная сетка */
+@media (max-width: 768px) {
+  .ant-row {
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+  }
+  
+  .ant-col {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+/* Скрытие элементов на мобильных */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
 } 

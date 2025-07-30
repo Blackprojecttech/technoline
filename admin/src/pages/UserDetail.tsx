@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from 'react-query';
 import { 
@@ -20,7 +20,9 @@ import {
   Statistic,
   Select,
   message,
-  Popconfirm
+  Popconfirm,
+  Popover,
+  Button as AntButton
 } from 'antd';
 import { 
   UserOutlined, 
@@ -33,8 +35,10 @@ import {
   DollarOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  BellOutlined
 } from '@ant-design/icons';
+// import { NotificationCenter } from '../components/layout/Header';
 
 const { Title, Text } = Typography;
 
@@ -52,6 +56,7 @@ interface User {
   address?: string;
   password: string;
   isOnline: boolean;
+  middleName?: string; // Added middleName to the User interface
 }
 
 interface Order {
@@ -91,11 +96,16 @@ interface UserDetailResponse {
 async function fetchUserDetail(id: string): Promise<UserDetailResponse> {
   const token = localStorage.getItem('admin_token');
   if (!token) throw new Error('No auth token');
-  const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5002/api'}/admin/users/${id}`, {
+  const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://technoline-api.loca.lt/api'}/admin/users/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!response.ok) throw new Error('Failed to fetch user detail');
   return response.json();
+}
+
+// Функция для форматирования ФИО
+function formatFullName(user: User) {
+  return [user?.lastName, user?.firstName, user?.middleName].filter(Boolean).join(' ');
 }
 
 const UserDetail: React.FC = () => {
@@ -105,6 +115,11 @@ const UserDetail: React.FC = () => {
   const [isRoleModalVisible, setIsRoleModalVisible] = useState(false);
   const [newRole, setNewRole] = useState<string>('');
   const queryClient = useQueryClient();
+  const [notificationPopoverVisible, setNotificationPopoverVisible] = useState(false);
+  // Синхронизация с header: при открытии этого поповера закрывать глобальный (если нужно, можно через context)
+  const handleNotificationPopoverChange = (open: boolean) => {
+    setNotificationPopoverVisible(open);
+  };
   
   const { data, isLoading, error } = useQuery<UserDetailResponse>({
     queryKey: ['adminUserDetail', id],
@@ -112,19 +127,64 @@ const UserDetail: React.FC = () => {
     enabled: !!id && !!localStorage.getItem('admin_token'),
   });
 
+  // Автоматическая прокрутка вверх при загрузке страницы
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id]);
+
   const columns = [
     { title: 'Номер заказа', dataIndex: 'orderNumber', key: 'orderNumber' },
     { title: 'Сумма', dataIndex: 'total', key: 'total', render: (v: number) => `${v.toLocaleString()} ₽` },
-    { title: 'Статус', dataIndex: 'status', key: 'status' },
+    { 
+      title: 'Статус', 
+      dataIndex: 'status', 
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>
+          {getStatusText(status)}
+        </Tag>
+      )
+    },
     { title: 'Дата', dataIndex: 'createdAt', key: 'createdAt', render: (v: string) => new Date(v).toLocaleDateString('ru-RU') },
+    {
+      title: 'Действия',
+      key: 'action',
+      render: (_: any, record: Order) => (
+        <Button 
+          type="primary" 
+          size="small" 
+          icon={<EyeOutlined />}
+                      onClick={() => navigate(`/admin/orders/${record._id}`)}
+        >
+          Посмотреть заказ
+        </Button>
+      ),
+    },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'success';
-      case 'pending': return 'warning';
-      case 'cancelled': return 'error';
+      case 'pending': return 'orange';
+      case 'confirmed': return 'blue';
+      case 'processing': return 'purple';
+      case 'shipped': return 'indigo';
+      case 'delivered': return 'green';
+      case 'cancelled': return 'red';
+      case 'with_courier': return 'cyan';
       default: return 'default';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Ожидает подтверждения';
+      case 'confirmed': return 'Подтвержден';
+      case 'processing': return 'В обработке';
+      case 'shipped': return 'Отправлен';
+      case 'delivered': return 'Доставлен';
+      case 'cancelled': return 'Отменен';
+      case 'with_courier': return 'Передан курьеру';
+      default: return status;
     }
   };
 
@@ -134,7 +194,7 @@ const UserDetail: React.FC = () => {
     try {
       const token = localStorage.getItem('admin_token');
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5002/api'}/admin/users/${id}/role`,
+        `${import.meta.env.VITE_API_URL || 'https://technoline-api.loca.lt/api'}/admin/users/${id}/role`,
         {
           method: 'PUT',
           headers: {
@@ -171,7 +231,7 @@ const UserDetail: React.FC = () => {
     try {
       const token = localStorage.getItem('admin_token');
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5002/api'}/admin/users/${id}`,
+        `${import.meta.env.VITE_API_URL || 'https://technoline-api.loca.lt/api'}/admin/users/${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -181,9 +241,9 @@ const UserDetail: React.FC = () => {
       );
 
       if (response.ok) {
-        message.success(`Пользователь ${data.user.firstName} ${data.user.lastName} успешно удален`);
+        message.success(`Пользователь ${formatFullName(data.user)} успешно удален`);
         queryClient.invalidateQueries(['adminUsers']);
-        navigate('/users');
+        navigate('/admin/users');
       } else {
         const errorData = await response.json();
         message.error(errorData.message || 'Ошибка при удалении пользователя');
@@ -210,7 +270,7 @@ const UserDetail: React.FC = () => {
           </Col>
           <Col flex="1">
             <Title level={3} style={{ margin: 0 }}>
-              {data.user.firstName} {data.user.lastName}
+              {formatFullName(data.user)}
               {data.user.isOnline && (
                 <Tag color="green" style={{ marginLeft: 8 }}>
                   <ClockCircleOutlined /> Онлайн
@@ -229,7 +289,7 @@ const UserDetail: React.FC = () => {
               </Button>
               <Popconfirm
                 title="Удалить пользователя"
-                description={`Вы уверены, что хотите удалить пользователя ${data.user.firstName} ${data.user.lastName}? Это действие нельзя отменить.`}
+                description={`Вы уверены, что хотите удалить пользователя ${formatFullName(data.user)}? Это действие нельзя отменить.`}
                 onConfirm={handleDeleteUser}
                 okText="Удалить"
                 cancelText="Отмена"
@@ -455,7 +515,7 @@ const UserDetail: React.FC = () => {
         cancelText="Отмена"
       >
         <div>
-          <p><strong>Пользователь:</strong> {data.user.firstName} {data.user.lastName}</p>
+          <p><strong>Пользователь:</strong> {formatFullName(data.user)}</p>
           <p><strong>Email:</strong> {data.user.email}</p>
           <p><strong>Текущая роль:</strong> {data.user.role}</p>
           <br />
@@ -467,6 +527,7 @@ const UserDetail: React.FC = () => {
             options={[
               { value: 'user', label: 'Пользователь' },
               { value: 'moderator', label: 'Модератор' },
+              { value: 'accountant', label: 'Бухгалтер' },
               { value: 'admin', label: 'Администратор' }
             ]}
           />

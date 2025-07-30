@@ -1,13 +1,26 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://technoline-api.loca.lt/api';
 
 interface AuthResponse {
   _id: string;
   email: string;
   firstName: string;
   lastName: string;
+  middleName?: string;
   phone?: string;
   role: string;
   token: string;
+  addresses?: ProfileAddress[];
+}
+
+interface ProfileAddress {
+  id: string;
+  name: string;
+  address: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  isDefault?: boolean;
 }
 
 interface UserProfile {
@@ -18,6 +31,7 @@ interface UserProfile {
   phone?: string;
   address?: string;
   role: string;
+  addresses?: ProfileAddress[];
 }
 
 interface Order {
@@ -65,16 +79,35 @@ export const authAPI = {
   register: async (data: {
     firstName: string;
     lastName: string;
+    middleName?: string;
     email: string;
     phone?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     password: string;
   }): Promise<AuthResponse> => {
+    // Получаем реферальный код из localStorage или куки
+    const referralCode = typeof window !== 'undefined' ? 
+      localStorage.getItem('referralCode') || 
+      document.cookie.split('; ').find(row => row.startsWith('referralCode='))?.split('=')[1] 
+      : null;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Передаем реферальный код в заголовке
+    if (referralCode) {
+      headers['x-referral-code'] = referralCode;
+      console.log('🔗 Передаем реферальный код при регистрации:', referralCode);
+    }
+
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
+      credentials: 'include', // Важно для передачи куки
       body: JSON.stringify(data),
     });
 
@@ -83,7 +116,15 @@ export const authAPI = {
       throw new Error(error.message || 'Ошибка регистрации');
     }
 
-    return response.json();
+    const result = await response.json();
+    
+    // Очищаем реферальный код после успешной регистрации
+    if (typeof window !== 'undefined' && referralCode) {
+      localStorage.removeItem('referralCode');
+      console.log('🧹 Реферальный код очищен после регистрации');
+    }
+
+    return result;
   },
 
   // Вход

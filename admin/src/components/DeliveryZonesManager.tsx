@@ -10,7 +10,7 @@ interface DeliveryZone {
   sortOrder: number;
 }
 
-const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5002/api'}/admin/delivery-zones`;
+const apiUrl = `${import.meta.env.VITE_API_URL || 'https://technoline-api.loca.lt/api'}/admin/delivery-zones`;
 
 const DeliveryZonesManager: React.FC = () => {
   const [zones, setZones] = useState<DeliveryZone[]>([]);

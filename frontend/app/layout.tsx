@@ -3,6 +3,11 @@ import { Inter, Nunito } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Toaster } from 'react-hot-toast'
+import NotificationDrawerClient from '@/components/layout/NotificationDrawerClient';
+import PullToRefresh from '@/components/PullToRefresh';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
+import PWALoadingScreen from '@/components/PWALoadingScreen';
+import PWAUpdatePrompt from '@/components/PWAUpdatePrompt';
 
 const inter = Inter({ subsets: ['latin'] })
 const nunito = Nunito({ 
@@ -16,6 +21,12 @@ export const metadata: Metadata = {
   description: 'Интернет-магазин мобильной электроники TechnoLine - широкий ассортимент телефонов, планшетов, аксессуаров по выгодным ценам',
   keywords: 'мобильная электроника, телефоны, планшеты, аксессуары, TechnoLine, интернет-магазин',
   authors: [{ name: 'TechnoLine Store' }],
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
   verification: {
     google: 'YEGlkz27iZo3rGzbVTvAo2GU6Yr0i4-cc5KD8u9D2h8',
     yandex: 'bc58ca38f950ca9f',
@@ -67,6 +78,61 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <head>
+        {/* Иконки */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+        <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+        <link rel="apple-touch-icon" href="/icon-192.png" sizes="192x192" />
+        <link rel="manifest" href="/manifest.json" />
+        
+        {/* iOS Safari PWA метатеги */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="TechnoLine" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        
+        {/* iOS Splash Screen */}
+        <link rel="apple-touch-startup-image" href="/icon-512.png" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
+        {/* Цветовая схема */}
+        <meta name="theme-color" content="#2563eb" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1e40af" />
+        <meta name="msapplication-TileColor" content="#2563eb" />
+        <meta name="msapplication-navbutton-color" content="#2563eb" />
+        
+        {/* PWA метатеги для всех браузеров */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="TechnoLine" />
+        <meta name="format-detection" content="telephone=no" />
+        
+        {/* Дополнительные метатеги для улучшения PWA */}
+        <meta name="apple-mobile-web-app-orientation" content="portrait" />
+        <meta name="screen-orientation" content="portrait" />
+        <meta name="full-screen" content="yes" />
+        <meta name="browsermode" content="application" />
+        
+        {/* Service Worker регистрация */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                      console.log('SW registration failed: ', registrationError);
+                    });
+                });
+              }
+            `,
+          }}
+        />
+        
         {/* Яндекс.Метрика */}
         <script
           dangerouslySetInnerHTML={{
@@ -110,7 +176,12 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} ${nunito.variable}`}>
         <Providers>
+          <PWALoadingScreen />
+          <PullToRefresh />
           {children}
+          <NotificationDrawerClient />
+          <PWAInstallPrompt />
+          <PWAUpdatePrompt />
           <Toaster 
             position="top-right"
             toastOptions={{
