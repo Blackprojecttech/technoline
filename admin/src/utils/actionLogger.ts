@@ -2,7 +2,7 @@ interface ActionItem {
   id: string;
   adminName: string;
   action: string;
-  page: 'receipts' | 'debts' | 'arrivals' | 'suppliers' | 'payments';
+  page: 'receipts' | 'debts' | 'arrivals' | 'suppliers' | 'payments' | 'notifications' | 'orders';
   details: string;
   entityId?: string;
   entityName?: string;
@@ -52,7 +52,7 @@ export const logAction = async (
   try {
     // Отправляем действие на сервер
     const token = localStorage.getItem('admin_token');
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002/api';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://technohubstore.net/api';
     const response = await fetch(`${baseUrl}/admin-actions`, {
       method: 'POST',
       headers: {
@@ -188,4 +188,12 @@ export const logSupplierAction = (action: string, details: string, supplierName?
 
 export const logPaymentAction = (action: string, details: string, paymentId?: string) => {
   logAction(action, 'payments', details, paymentId, undefined);
+}; 
+
+export const logNotificationAction = (action: string, details: string, entityId?: string, entityName?: string) => {
+  logAction(action, 'notifications', details, entityId, entityName);
+};
+
+export const logOrderAction = (action: string, details: string, entityId?: string, entityName?: string) => {
+  logAction(action, 'orders', details, entityId, entityName);
 }; 
