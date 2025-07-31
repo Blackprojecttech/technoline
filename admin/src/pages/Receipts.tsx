@@ -3750,6 +3750,26 @@ const Receipts: React.FC = () => {
       };
       
       const createdRefund = await paymentsApi.create(refundData);
+
+      // Создаем чек с отрицательной суммой
+      const receiptData = {
+        receiptNumber: `REFUND-${Date.now()}`,
+        date: refundDate,
+        items: [],
+        totalAmount: -Math.abs(values.amount),
+        status: 'completed' as const,
+        payments: [{
+          method: 'cash',
+          amount: -Math.abs(values.amount),
+          inCashRegister: values.inCashRegister,
+          cashRegisterDate: values.cashRegisterDate
+        }],
+        notes: values.notes || `Откат клиенту ${values.clientName}`,
+        clientName: values.clientName,
+        createdBy: getCurrentAdminName()
+      };
+
+      await receiptsApi.create(receiptData);
       
       // Логируем действие
       logReceiptAction(
@@ -3762,8 +3782,9 @@ const Receipts: React.FC = () => {
       setIsRefundModalVisible(false);
       refundForm.resetFields();
       
-      // Обновляем сумму наличных в кассе
+      // Обновляем сумму наличных в кассе и список чеков
       loadCashInRegister();
+      loadReceipts();
       
     } catch (error) {
       console.error('❌ Ошибка при создании отката:', error);
