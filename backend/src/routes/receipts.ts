@@ -4,7 +4,6 @@ import { Payment } from '../models/Payment';
 import { Arrival } from '../models/Arrival';
 import { auth } from '../middleware/auth';
 import { admin } from '../middleware/admin';
-import { handleReceiptPayment } from '../middleware/receiptPayment';
 
 const router = express.Router();
 
@@ -58,7 +57,7 @@ router.get('/:id', auth, admin, async (req, res) => {
 });
 
 // Создать новый чек
-router.post('/', auth, admin, handleReceiptPayment, async (req, res) => {
+router.post('/', auth, admin, async (req, res) => {
   try {
     console.log('🧾 POST /api/receipts - Создание чека:', {
       isDebt: req.body.isDebt,
