@@ -3756,7 +3756,11 @@ const Receipts: React.FC = () => {
         receiptNumber: `REFUND-${Date.now()}`,
         date: refundDate,
         items: [],
-        totalAmount: -Math.abs(values.amount),
+        total: -Math.abs(values.amount),
+        subtotal: -Math.abs(values.amount),
+        discount: 0,
+        tax: 0,
+        paymentMethod: 'cash',
         status: 'completed' as const,
         payments: [{
           method: 'cash',
@@ -3765,7 +3769,7 @@ const Receipts: React.FC = () => {
           cashRegisterDate: values.cashRegisterDate
         }],
         notes: values.notes || `Откат клиенту ${values.clientName}`,
-        clientName: values.clientName,
+        customerName: values.clientName,
         createdBy: getCurrentAdminName()
       };
 
