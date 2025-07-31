@@ -32,7 +32,8 @@ import {
   CopyOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  RollbackOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { format } from 'date-fns';
@@ -225,6 +226,10 @@ const Receipts: React.FC = () => {
   const [currentReceiptItems, setCurrentReceiptItems] = useState<ReceiptItem[]>([]);
   const [form] = Form.useForm();
   const [itemForm] = Form.useForm();
+  
+  // Состояния для модального окна отката
+  const [isRefundModalVisible, setIsRefundModalVisible] = useState(false);
+  const [refundForm] = Form.useForm();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed' | 'cancelled'>('all');
   const [periodType, setPeriodType] = useState<PeriodType>('month');
@@ -239,6 +244,9 @@ const Receipts: React.FC = () => {
   const [isDebtChecked, setIsDebtChecked] = useState(false);
   const [adminCache, setAdminCache] = useState<{[key: string]: string}>({});
   
+  // Состояние для мобильной версии
+  const [isMobile, setIsMobile] = useState(false);
+  
   // Состояние для пагинации
   const [pageSize, setPageSize] = useState<number>(() => {
     const saved = localStorage.getItem('receipts_page_size');
@@ -252,6 +260,62 @@ const Receipts: React.FC = () => {
   };
 
   // Функция для очистки всех чеков (только для админов и бухгалтеров)
+  // Функция для обработки отката (добавления отрицательного платежа)
+  const handleRefund = () => {
+    refundForm.resetFields();
+    refundForm.setFieldsValue({
+      date: dayjs().format('YYYY-MM-DD'),
+      inCashRegister: 'yes',
+      cashRegisterDate: dayjs().format('YYYY-MM-DD')
+    });
+    setIsRefundModalVisible(true);
+  };
+
+  // Функция для создания отрицательного платежа
+  const handleRefundOk = async () => {
+    try {
+      const values = await refundForm.validateFields();
+      
+      // Создаём отрицательный платеж через API
+      const refundDate = values.date ? 
+        (values.date.includes('T') ? values.date : `${values.date}T${new Date().toTimeString().split(' ')[0]}`) :
+        new Date().toISOString();
+
+      const refundData = {
+        type: 'наличные',
+        apiType: 'expense', // Это расход (отрицательный платеж)
+        category: 'Откат клиенту',
+        amount: -Math.abs(values.amount), // Отрицательная сумма
+        date: refundDate,
+        description: `Откат клиенту: ${values.clientName}`,
+        paymentMethod: 'наличные',
+        notes: values.notes || `Откат клиенту ${values.clientName}`,
+        inCashRegister: values.inCashRegister || 'yes',
+        cashRegisterDate: values.inCashRegister && values.cashRegisterDate ? values.cashRegisterDate : undefined
+      };
+      
+      const createdRefund = await paymentsApi.create(refundData);
+      
+      // Логируем действие
+      logReceiptAction(
+        'Создание отката',
+        `Добавлен откат клиенту ${values.clientName} на сумму ${Math.abs(values.amount).toLocaleString('ru-RU')} ₽`,
+        `refund_${Date.now()}`
+      );
+      
+      message.success(`Откат клиенту ${values.clientName} на сумму ${Math.abs(values.amount).toLocaleString('ru-RU')} ₽ успешно создан`);
+      setIsRefundModalVisible(false);
+      refundForm.resetFields();
+      
+      // Обновляем сумму наличных в кассе
+      loadCashInRegister();
+      
+    } catch (error) {
+      console.error('❌ Ошибка при создании отката:', error);
+      message.error('Ошибка при создании отката');
+    }
+  };
+
   const handleClearAllReceipts = async () => {
     if (!hasFullAccess()) {
       message.error('Только администратор или бухгалтер может очищать все записи');
@@ -1958,7 +2022,7 @@ const Receipts: React.FC = () => {
           date: new Date().toISOString(),
           items: currentReceiptItems,
           totalAmount,
-          status: values.status || 'completed',
+          status: editingReceipt ? (values.status || 'completed') : 'new',
           payments,
           notes: values.notes || '',
           createdBy: getCurrentAdminName(),
@@ -3451,34 +3515,46 @@ const Receipts: React.FC = () => {
       window.removeEventListener('productUpdate', handleProductUpdate as EventListener);
     };
   }, [loadInitialData]);
+  
+  // Определяем мобильное устройство
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <div>
       {/* Компактная статистика */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={4}>
+      <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: '24px' }}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="Оборот за месяц" value={statistics.monthTurnover} blockId="monthTurnover" />
         </Col>
-        <Col span={4}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="Оборот за день" value={statistics.todayTurnover} blockId="todayTurnover" />
         </Col>
-        <Col span={4}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="Прибыль за месяц" value={statistics.monthProfit} color="#1890ff" blockId="monthProfit" />
         </Col>
-        <Col span={4}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="Прибыль за день" value={statistics.todayProfit} color="#1890ff" blockId="todayProfit" />
         </Col>
-        <Col span={4}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="Наличные в кассе сейчас" value={cashInRegisterAmount} blockId="cashInRegister" />
         </Col>
-        <Col span={4}>
+        <Col span={isMobile ? 12 : 4}>
           <StatBlock title="КЕБ сегодня" value={statistics.todayKeb} blockId="todayKeb" />
         </Col>
       </Row>
       {Object.entries(statistics.todaySberByRecipient).length > 0 && (
-        <Row gutter={16} style={{ marginBottom: '24px' }}>
+        <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: '24px' }}>
           {Object.entries(statistics.todaySberByRecipient).map(([recipient, amount]) => (
-            <Col span={4} key={recipient}>
+            <Col span={isMobile ? 12 : 4} key={recipient}>
               <StatBlock title={`Сбер сегодня (${recipient})`} value={amount} color="#fa8c16" blockId={`sber_${recipient}`} />
             </Col>
           ))}
@@ -3486,31 +3562,49 @@ const Receipts: React.FC = () => {
       )}
 
       {/* Фильтры и поиск */}
-      <Card style={{ marginBottom: '24px', borderRadius: '12px' }} styles={{ body: { padding: 24 } }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <Card style={{ marginBottom: '24px', borderRadius: '12px' }} styles={{ body: { padding: isMobile ? 16 : 24 } }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: isMobile ? '12px' : '16px', 
+          alignItems: isMobile ? 'stretch' : 'center', 
+          flexWrap: 'wrap',
+          flexDirection: isMobile ? 'column' : 'row'
+        }}>
           <Search
             placeholder="Поиск по номеру, товару, поставщику, способу оплаты"
-            style={{ width:400 }}
+            style={{ width: isMobile ? '100%' : 400 }}
             onChange={(e) => setSearchText(e.target.value)}
             prefix={<SearchOutlined />}
           />
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ minWidth: 150 }}
-          >
-            <Option key="all" value="all">Все статусы</Option>
-            <Option key="new" value="new">Новые</Option>
-            <Option key="completed" value="completed">Завершенные</Option>
-            <Option key="cancelled" value="cancelled">Отмененные</Option>
-          </Select>
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: isMobile ? '100%' : 'auto'
+          }}>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ minWidth: isMobile ? '100%' : 150 }}
+            >
+              <Option key="all" value="all">Все статусы</Option>
+              <Option key="new" value="new">Новые</Option>
+              <Option key="completed" value="completed">Завершенные</Option>
+              <Option key="cancelled" value="cancelled">Отмененные</Option>
+            </Select>
           
           {/* Фильтр по периодам */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '8px', 
+            alignItems: 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: isMobile ? '100%' : 'auto'
+          }}>
             <Select
               value={periodType}
               onChange={setPeriodType}
-              style={{ width: 120 }}
+              style={{ width: isMobile ? '100%' : 120 }}
             >
               <Option value="day">День</Option>
               <Option value="week">Неделя</Option>
@@ -3523,7 +3617,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="DD.MM.YYYY"
-                style={{ width: 140 }}
+                style={{ width: isMobile ? '100%' : 140 }}
               />
             )}
             
@@ -3532,7 +3626,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="DD.MM.YYYY"
-                style={{ width: 140 }}
+                style={{ width: isMobile ? '100%' : 140 }}
                 picker="week"
               />
             )}
@@ -3542,7 +3636,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="MMMM YYYY"
-                style={{ width: 140 }}
+                style={{ width: isMobile ? '100%' : 140 }}
                 picker="month"
               />
             )}
@@ -3556,23 +3650,42 @@ const Receipts: React.FC = () => {
                   }
                 }}
                 format="DD.MM.YYYY"
-                style={{ width: 240 }}
+                style={{ width: isMobile ? '100%' : 240 }}
               />
             )}
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+          
+          {/* Кнопки действий */}
+          <div style={{ 
+            marginLeft: isMobile ? 0 : 'auto', 
+            display: 'flex', 
+            gap: '8px',
+            flexDirection: isMobile ? 'column' : 'row',
+            width: isMobile ? '100%' : 'auto'
+          }}>
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleCreateReceipt}
               style={{ borderRadius: '8px' }}
+              size={isMobile ? 'large' : 'middle'}
             >
               Создать чек
+            </Button>
+            <Button
+              type="default"
+              icon={<RollbackOutlined />}
+              onClick={handleRefund}
+              style={{ borderRadius: '8px', borderColor: '#fa8c16', color: '#fa8c16' }}
+              size={isMobile ? 'large' : 'middle'}
+            >
+              Откат
             </Button>
             <Button
               icon={<ReloadOutlined />}
               onClick={loadReceipts}
               style={{ borderRadius: '8px' }}
+              size={isMobile ? 'large' : 'middle'}
             >
               Обновить
             </Button>
@@ -3582,6 +3695,7 @@ const Receipts: React.FC = () => {
                 icon={<DeleteOutlined />}
                 onClick={handleClearAllReceipts}
                 style={{ borderRadius: '8px' }}
+                size={isMobile ? 'large' : 'middle'}
               >
                 Очистить все записи
               </Button>
@@ -3682,21 +3796,24 @@ const Receipts: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="status"
-                label="Статус чека"
-                initialValue="new"
-                rules={[{ required: true, message: 'Выберите статус' }]}
-              >
-                <Select placeholder="Выберите статус">
-                  <Option key="new" value="new">Новый</Option>
-                  <Option key="completed" value="completed">Завершен</Option>
-                  <Option key="cancelled" value="cancelled">Отменен</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
+            {editingReceipt && (
+              <Col span={12}>
+                <Form.Item
+                  name="status"
+                  label="Статус чека"
+                  initialValue="new"
+                  rules={[{ required: true, message: 'Выберите статус' }]}
+                >
+                  <Select placeholder="Выберите статус">
+                    <Option key="new" value="new">Новый</Option>
+                    <Option key="completed" value="completed">Завершен</Option>
+                    <Option key="cancelled" value="cancelled">Отменен</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            )}
+            <Col span={editingReceipt ? 12 : 24} offset={editingReceipt ? 0 : 0} style={editingReceipt ? {} : { display: 'flex', justifyContent: 'center' }}>
+              <div style={editingReceipt ? {} : { width: '600px', maxWidth: '100%' }}>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ margin: 0 }}>Способы оплаты</h4>
@@ -3840,6 +3957,7 @@ const Receipts: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </Col>
           </Row>
@@ -4603,6 +4721,104 @@ const Receipts: React.FC = () => {
               </div>
             );
           })()}
+        </Form>
+      </Modal>
+
+      {/* Модальное окно для отката */}
+      <Modal
+        title="Добавить откат клиенту"
+        open={isRefundModalVisible}
+        onOk={handleRefundOk}
+        onCancel={() => {
+          refundForm.resetFields();
+          setIsRefundModalVisible(false);
+        }}
+        okText="Создать откат"
+        cancelText="Отмена"
+        width={600}
+      >
+        <Form form={refundForm} layout="vertical">
+          <Form.Item
+            name="clientName"
+            label="Имя клиента"
+            rules={[{ required: true, message: 'Пожалуйста, введите имя клиента' }]}
+          >
+            <Input placeholder="Введите имя клиента" />
+          </Form.Item>
+
+          <Form.Item
+            name="amount"
+            label="Сумма отката"
+            rules={[{ required: true, message: 'Пожалуйста, введите сумму' }]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              placeholder="1000"
+              min={0}
+              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              addonAfter="₽"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="date"
+            label="Дата отката"
+            rules={[{ required: true, message: 'Выберите дату' }]}
+          >
+            <Input type="date" />
+          </Form.Item>
+
+          <Form.Item
+            name="notes"
+            label="Примечания"
+          >
+            <Input.TextArea 
+              placeholder="Дополнительная информация об откате"
+              rows={3}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="inCashRegister"
+            label="В кассе"
+            valuePropName="checked"
+            initialValue={true}
+          >
+            <Switch 
+              checkedChildren="В кассе" 
+              unCheckedChildren="Не в кассе"
+            />
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => prevValues.inCashRegister !== currentValues.inCashRegister}
+          >
+            {({ getFieldValue }) =>
+              getFieldValue('inCashRegister') ? (
+                <Form.Item
+                  name="cashRegisterDate"
+                  label="Дата поступления в кассу"
+                >
+                  <Input type="date" />
+                </Form.Item>
+              ) : null
+            }
+          </Form.Item>
+
+          <Alert
+            message="Информация об откате"
+            description={
+              <div>
+                <p>• Отрицательный платеж будет создан в разделе "Расчеты"</p>
+                <p>• Сумма будет списана из наличных в кассе</p>
+                <p>• Запись появится в истории платежей</p>
+              </div>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
         </Form>
       </Modal>
     </div>
