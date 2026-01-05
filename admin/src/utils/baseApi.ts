@@ -15,7 +15,7 @@ export class BaseApi {
       this.baseUrl = 'https://technohubstore.net/api';
     }
     
-    // console.log('🌐 API Base URL:', this.baseUrl); // Закомментировано для уменьшения шума в консоли
+    console.log('🌐 API Base URL:', this.baseUrl);
     this.endpoint = endpoint;
   }
 
@@ -317,7 +317,7 @@ export const sberRecipientsApi = new BaseApi('sber-recipients');
 export const incassateReceipts = async (receiptIds: string[], incassationData?: {
   status: 'incassated';
   incassationDate: string;
-  inCashRegister: 'yes' | 'no' | 'debt';
+  inCashRegister: boolean;
 }) => {
   console.warn('⚠️ incassateReceipts: Эта функция отключена. Инкассация не должна изменять существующие платежи!');
   return { success: false, message: 'Функция отключена' };

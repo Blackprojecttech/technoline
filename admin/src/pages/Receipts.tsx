@@ -32,8 +32,7 @@ import {
   CopyOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
-  ReloadOutlined,
-  RollbackOutlined
+  ReloadOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { format } from 'date-fns';
@@ -1923,7 +1922,7 @@ const Receipts: React.FC = () => {
           payments: paymentsWithCashRegister, // Добавляем массив платежей для интеграции с расчетами
           deliveryMethod: selectedDeliveryMethod || undefined,
           deliveryCost: calculatedAmounts.deliveryPrice || 0,
-          status: 'new' as const,
+          status: 'completed' as const,
           notes: values.notes || '',
           customerName: values.isDebt ? values.clientName : undefined,
           customerPhone: undefined,
@@ -1959,7 +1958,7 @@ const Receipts: React.FC = () => {
           date: new Date().toISOString(),
           items: currentReceiptItems,
           totalAmount,
-          status: 'new',
+          status: values.status || 'completed',
           payments,
           notes: values.notes || '',
           createdBy: getCurrentAdminName(),
@@ -3453,390 +3452,52 @@ const Receipts: React.FC = () => {
     };
   }, [loadInitialData]);
 
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Определяем мобильную версию при монтировании
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Компонент карточки чека для мобильной версии
-  const MobileReceiptCard: React.FC<{ receipt: Receipt }> = ({ receipt }) => {
-    const [showDetails, setShowDetails] = useState(false);
-
-    // Считаем общую сумму из товаров (до скидки)
-    const subtotal = receipt.items.reduce((sum, item) => {
-      const itemTotal = (item.price || 0) * (item.quantity || 1);
-      return sum + itemTotal;
-    }, 0);
-
-    // Вычисляем скидку
-    let discountAmount = 0;
-    const discountInfo = receipt.discountInfo;
-    if (discountInfo && discountInfo.value > 0) {
-      if (discountInfo.type === 'percent') {
-        discountAmount = subtotal * (discountInfo.value / 100);
-      } else {
-        discountAmount = discountInfo.value;
-      }
-    }
-
-    // Вычисляем итоговую сумму
-    const finalAmount = receipt.totalAmount || receipt.total || 0;
-
-    return (
-      <Card
-        style={{
-          marginBottom: '12px',
-          borderRadius: '8px',
-          background: receipt.status === 'cancelled' ? '#fff2f0' : '#fff'
-        }}
-        bodyStyle={{ padding: '12px' }}
-      >
-        {/* Верхняя часть карточки */}
-        <div style={{ marginBottom: '8px' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'flex-start',
-            marginBottom: '8px'
-          }}>
-            <div>
-              <div style={{ fontSize: '14px', color: '#8c8c8c' }}>
-                {dayjs(receipt.date).format('DD.MM.YYYY HH:mm')}
-              </div>
-              <div style={{ 
-                fontSize: '16px', 
-                fontWeight: '500',
-                marginTop: '4px',
-                cursor: 'pointer'
-              }} onClick={() => setShowDetails(!showDetails)}>
-                {receipt.receiptNumber || 'Без номера'}
-              </div>
-            </div>
-            <Tag color={getStatusColor(receipt.status)}>
-              {getStatusText(receipt.status)}
-            </Tag>
-          </div>
-
-          {/* Клиент */}
-          {(receipt.clientName || receipt.isDebt) && (
-            <div style={{ 
-              marginTop: '8px',
-              color: receipt.isDebt ? '#ff4d4f' : '#262626',
-              fontWeight: receipt.isDebt ? '500' : 'normal'
-            }}>
-              {receipt.clientName} {receipt.isDebt && '(долг)'}
-            </div>
-          )}
-        </div>
-
-        {/* Краткая информация о товарах */}
-        <div style={{ marginBottom: '12px' }}>
-          {receipt.items.map((item, index) => (
-            <div 
-              key={index} 
-              style={{ 
-                marginBottom: index < receipt.items.length - 1 ? '8px' : 0,
-                fontSize: '14px'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ flex: 1 }}>
-                  <div>{item.productName}</div>
-                  {item.serialNumber && (
-                    <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                      S/N: {item.serialNumber}
-                    </div>
-                  )}
-                </div>
-                <div style={{ marginLeft: '12px', whiteSpace: 'nowrap' }}>
-                  {item.quantity} × {item.price.toLocaleString('ru-RU')} ₽
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Способы оплаты */}
-        {receipt.payments && receipt.payments.length > 0 && (
-          <div style={{ marginBottom: '12px' }}>
-            {receipt.payments.map((payment, index) => (
-              <div 
-                key={index}
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  fontSize: '14px',
-                  color: getPaymentMethodColor(payment.method)
-                }}
-              >
-                <span>
-                  {getPaymentMethodText(payment.method)}
-                  {payment.sberRecipient && ` → ${payment.sberRecipient}`}
-                </span>
-                <span style={{ fontWeight: '500' }}>
-                  {payment.amount.toLocaleString('ru-RU')} ₽
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Итоговая сумма */}
-        <div style={{ 
-          borderTop: '1px solid #f0f0f0',
-          paddingTop: '12px',
-          marginTop: '12px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#8c8c8c' }}>Сумма товаров:</span>
-            <span>{subtotal.toLocaleString('ru-RU')} ₽</span>
-          </div>
-          {discountAmount > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              color: '#ff4d4f'
-            }}>
-              <span>Скидка:</span>
-              <span>-{discountAmount.toLocaleString('ru-RU')} ₽</span>
-            </div>
-          )}
-          {receipt.deliveryPrice && receipt.deliveryPrice > 0 && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              color: '#1890ff'
-            }}>
-              <span>Доставка:</span>
-              <span>+{receipt.deliveryPrice.toLocaleString('ru-RU')} ₽</span>
-            </div>
-          )}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            marginTop: '8px',
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#52c41a'
-          }}>
-            <span>Итого:</span>
-            <span>{finalAmount.toLocaleString('ru-RU')} ₽</span>
-          </div>
-        </div>
-
-        {/* Кнопки действий */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px',
-          marginTop: '12px'
-        }}>
-          <Button
-            icon={<PrinterOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handlePrintReceipt(receipt);
-            }}
-            disabled={receipt.status === 'cancelled'}
-            style={{ flex: 1 }}
-          >
-            Печать
-          </Button>
-          {(() => {
-            // Для администратора и бухгалтера - всегда показываем кнопку удаления
-            if (canDeleteAnything()) {
-              const buttonText = receipt.status === 'cancelled' ? 'Удалить полностью' : 'Отменить';
-              const buttonTitle = receipt.status === 'cancelled' 
-                ? 'Полностью удалить отмененный чек из системы' 
-                : 'Отменить чек (пометить как отмененный)';
-              
-              return (
-                <Tooltip title={buttonTitle}>
-                  <Button
-                    icon={<DeleteOutlined />}
-                    danger
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSoftDeleteReceipt(receipt._id || receipt.id);
-                    }}
-                    style={{ flex: 1 }}
-                  >
-                    {buttonText}
-                  </Button>
-                </Tooltip>
-              );
-            }
-
-            // Для других ролей - только если чек не отменен
-            if (receipt.status === 'cancelled') {
-              return null;
-            }
-
-            const hasItemsWithPaidDebts = receipt.items.some(item => 
-              item.arrivalId && isDebtPaid(item.arrivalId)
-            );
-
-            return hasItemsWithPaidDebts ? (
-              <Tooltip title="Нельзя удалить чек с товарами, долги по которым уже оплачены">
-                <Button
-                  icon={<DeleteOutlined />}
-                  disabled
-                  style={{ flex: 1 }}
-                >
-                  Удалить
-                </Button>
-              </Tooltip>
-            ) : (
-              <Button
-                icon={<DeleteOutlined />}
-                danger
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSoftDeleteReceipt(receipt._id || receipt.id);
-                }}
-                style={{ flex: 1 }}
-              >
-                Удалить
-              </Button>
-            );
-          })()}
-        </div>
-      </Card>
-    );
-  };
-
-  // Состояния для модального окна отката
-  const [isRefundModalVisible, setIsRefundModalVisible] = useState(false);
-  const [refundForm] = Form.useForm();
-
-  // Функция для обработки отката (добавления отрицательного платежа)
-  const handleRefund = () => {
-    refundForm.resetFields();
-    refundForm.setFieldsValue({
-      date: dayjs().format('YYYY-MM-DD'),
-      inCashRegister: true,
-      cashRegisterDate: dayjs().format('YYYY-MM-DD')
-    });
-    setIsRefundModalVisible(true);
-  };
-
-  // Функция для создания отрицательного платежа
-  const handleRefundOk = async () => {
-    try {
-      const values = await refundForm.validateFields();
-      
-      // Создаём отрицательный платеж через API
-      const refundDate = values.date ? 
-        (values.date.includes('T') ? values.date : `${values.date}T${new Date().toTimeString().split(' ')[0]}`) :
-        new Date().toISOString();
-
-      const refundData = {
-        type: 'наличные',
-        apiType: 'expense', // Это расход (отрицательный платеж)
-        category: 'Откат клиенту',
-        amount: -Math.abs(values.amount), // Отрицательная сумма
-        date: refundDate,
-        description: `Откат клиенту: ${values.clientName}`,
-        paymentMethod: 'наличные',
-        notes: values.notes || `Откат клиенту ${values.clientName}`,
-        inCashRegister: values.inCashRegister ? 'yes' : 'no',
-        cashRegisterDate: values.inCashRegister && values.cashRegisterDate ? values.cashRegisterDate : undefined
-      };
-      
-      const createdRefund = await paymentsApi.create(refundData);
-      
-      // Логируем действие
-      logReceiptAction(
-        'Создание отката',
-        `Добавлен откат клиенту ${values.clientName} на сумму ${Math.abs(values.amount).toLocaleString('ru-RU')} ₽`,
-        `refund_${Date.now()}`
-      );
-      
-      message.success(`Откат клиенту ${values.clientName} на сумму ${Math.abs(values.amount).toLocaleString('ru-RU')} ₽ успешно создан`);
-      setIsRefundModalVisible(false);
-      refundForm.resetFields();
-      
-      // Обновляем сумму наличных в кассе
-      loadCashInRegister();
-      
-    } catch (error) {
-      console.error('❌ Ошибка при создании отката:', error);
-      message.error('Ошибка при создании отката');
-    }
-  };
-
   return (
     <div>
       {/* Компактная статистика */}
-      <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: '24px' }}>
-        <Col span={isMobile ? 12 : 4}>
+      <Row gutter={16} style={{ marginBottom: '24px' }}>
+        <Col span={4}>
           <StatBlock title="Оборот за месяц" value={statistics.monthTurnover} blockId="monthTurnover" />
         </Col>
-        <Col span={isMobile ? 12 : 4}>
+        <Col span={4}>
           <StatBlock title="Оборот за день" value={statistics.todayTurnover} blockId="todayTurnover" />
         </Col>
-        <Col span={isMobile ? 12 : 4}>
+        <Col span={4}>
           <StatBlock title="Прибыль за месяц" value={statistics.monthProfit} color="#1890ff" blockId="monthProfit" />
         </Col>
-        <Col span={isMobile ? 12 : 4}>
+        <Col span={4}>
           <StatBlock title="Прибыль за день" value={statistics.todayProfit} color="#1890ff" blockId="todayProfit" />
         </Col>
-        <Col span={isMobile ? 12 : 4}>
-          <StatBlock title="Наличные в кассе" value={cashInRegisterAmount} blockId="cashInRegister" />
+        <Col span={4}>
+          <StatBlock title="Наличные в кассе сейчас" value={cashInRegisterAmount} blockId="cashInRegister" />
         </Col>
-        <Col span={isMobile ? 12 : 4}>
+        <Col span={4}>
           <StatBlock title="КЕБ сегодня" value={statistics.todayKeb} blockId="todayKeb" />
         </Col>
       </Row>
-
-      {/* Сбер статистика */}
       {Object.entries(statistics.todaySberByRecipient).length > 0 && (
-        <Row gutter={isMobile ? 8 : 16} style={{ marginBottom: '24px' }}>
+        <Row gutter={16} style={{ marginBottom: '24px' }}>
           {Object.entries(statistics.todaySberByRecipient).map(([recipient, amount]) => (
-            <Col span={isMobile ? 12 : 4} key={recipient}>
-              <StatBlock 
-                title={`Сбер (${recipient})`} 
-                value={amount} 
-                color="#fa8c16" 
-                blockId={`sber_${recipient}`} 
-              />
+            <Col span={4} key={recipient}>
+              <StatBlock title={`Сбер сегодня (${recipient})`} value={amount} color="#fa8c16" blockId={`sber_${recipient}`} />
             </Col>
           ))}
         </Row>
       )}
 
       {/* Фильтры и поиск */}
-      <Card 
-        style={{ 
-          marginBottom: '24px', 
-          borderRadius: '12px' 
-        }} 
-        bodyStyle={{ 
-          padding: isMobile ? 12 : 24 
-        }}
-      >
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: isMobile ? '12px' : '16px', 
-          alignItems: isMobile ? 'stretch' : 'center'
-        }}>
+      <Card style={{ marginBottom: '24px', borderRadius: '12px' }} styles={{ body: { padding: 24 } }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
           <Search
-            placeholder="Поиск по номеру, товару, поставщику..."
-            style={{ width: isMobile ? '100%' : 400 }}
+            placeholder="Поиск по номеру, товару, поставщику, способу оплаты"
+            style={{ width:400 }}
             onChange={(e) => setSearchText(e.target.value)}
             prefix={<SearchOutlined />}
           />
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            style={{ width: isMobile ? '100%' : 150 }}
+            style={{ minWidth: 150 }}
           >
             <Option key="all" value="all">Все статусы</Option>
             <Option key="new" value="new">Новые</Option>
@@ -3845,17 +3506,11 @@ const Receipts: React.FC = () => {
           </Select>
           
           {/* Фильтр по периодам */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '8px' : '8px', 
-            alignItems: isMobile ? 'stretch' : 'center',
-            width: isMobile ? '100%' : 'auto'
-          }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <Select
               value={periodType}
               onChange={setPeriodType}
-              style={{ width: isMobile ? '100%' : 120 }}
+              style={{ width: 120 }}
             >
               <Option value="day">День</Option>
               <Option value="week">Неделя</Option>
@@ -3868,7 +3523,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="DD.MM.YYYY"
-                style={{ width: isMobile ? '100%' : 140 }}
+                style={{ width: 140 }}
               />
             )}
             
@@ -3877,7 +3532,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="DD.MM.YYYY"
-                style={{ width: isMobile ? '100%' : 140 }}
+                style={{ width: 140 }}
                 picker="week"
               />
             )}
@@ -3887,7 +3542,7 @@ const Receipts: React.FC = () => {
                 value={selectedDate}
                 onChange={(date) => setSelectedDate(date || dayjs())}
                 format="MMMM YYYY"
-                style={{ width: isMobile ? '100%' : 140 }}
+                style={{ width: 140 }}
                 picker="month"
               />
             )}
@@ -3901,64 +3556,34 @@ const Receipts: React.FC = () => {
                   }
                 }}
                 format="DD.MM.YYYY"
-                style={{ width: isMobile ? '100%' : 240 }}
+                style={{ width: 240 }}
               />
             )}
           </div>
-
-          {/* Кнопки действий */}
-          <div style={{ 
-            marginLeft: isMobile ? 0 : 'auto',
-            display: 'flex', 
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: '8px',
-            width: isMobile ? '100%' : 'auto'
-          }}>
-                          <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreateReceipt}
-                style={{ 
-                  borderRadius: '8px',
-                  width: isMobile ? '100%' : 'auto'
-                }}
-              >
-                Создать чек
-              </Button>
-              <Button
-                type="default"
-                icon={<RollbackOutlined />}
-                onClick={handleRefund}
-                style={{ 
-                  borderRadius: '8px',
-                  borderColor: '#fa8c16',
-                  color: '#fa8c16',
-                  width: isMobile ? '100%' : 'auto'
-                }}
-              >
-                Откат
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={loadReceipts}
-                style={{ 
-                  borderRadius: '8px',
-                  width: isMobile ? '100%' : 'auto'
-                }}
-              >
-                Обновить
-              </Button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreateReceipt}
+              style={{ borderRadius: '8px' }}
+            >
+              Создать чек
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadReceipts}
+              style={{ borderRadius: '8px' }}
+            >
+              Обновить
+            </Button>
             {hasFullAccess() && receipts.length > 0 && (
               <Button
                 danger
                 icon={<DeleteOutlined />}
                 onClick={handleClearAllReceipts}
-                style={{ 
-                  borderRadius: '8px',
-                  width: isMobile ? '100%' : 'auto'
-                }}
+                style={{ borderRadius: '8px' }}
               >
-                Очистить все
+                Очистить все записи
               </Button>
             )}
           </div>
@@ -3967,65 +3592,49 @@ const Receipts: React.FC = () => {
 
       {/* Информация о выбранном периоде */}
       <div style={{ marginBottom: '16px' }}>
-        <h3 style={{ 
-          margin: 0, 
-          color: '#595959', 
-          fontSize: isMobile ? '14px' : '16px', 
-          fontWeight: '500' 
-        }}>
+        <h3 style={{ margin: 0, color: '#595959', fontSize: '16px', fontWeight: '500' }}>
           📊 Чеки за период: {getPeriodTitle()} ({filteredReceipts.length} записей)
         </h3>
       </div>
 
-      {/* Таблица или список карточек */}
-      <Card 
-        style={{ borderRadius: '12px' }} 
-        bodyStyle={{ padding: isMobile ? 12 : 24 }}
-      >
-        {isMobile ? (
-          // Мобильная версия - список карточек
-          <div>
-            {filteredReceipts.map(receipt => (
-              <MobileReceiptCard key={receipt._id || receipt.id} receipt={receipt} />
-            ))}
-          </div>
-        ) : (
-          // Десктопная версия - таблица
-          <Table
-            dataSource={filteredReceipts}
-            rowKey={(record) => record._id || record.id}
-            rowClassName={(record) => {
-              let className = '';
-              
-              if (record.status === 'cancelled') {
-                className += 'cancelled-receipt';
-              }
-              
-              const hasNonCashPayment = record.payments && record.payments.some(p => p.method !== 'cash');
-              if (hasNonCashPayment) {
-                className += (className ? ' ' : '') + 'non-cash-payment';
-              }
-              
-              return className;
-            }}
-            expandable={{
-              expandedRowRender: expandedRowRender,
-              expandRowByClick: true,
-              showExpandColumn: false
-            }}
-            columns={columns}
-            pagination={{
-              pageSize: pageSize,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total) => `Всего ${total} чеков`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-              onShowSizeChange: handlePageSizeChange,
-            }}
-            size="small"
-            scroll={{ x: 'max-content' }}
-          />
-        )}
+      {/* Таблица чеков */}
+      <Card style={{ borderRadius: '12px' }} styles={{ body: { padding: 24 } }}>
+        <Table
+          dataSource={filteredReceipts}
+          rowKey={(record) => record._id || record.id}
+          rowClassName={(record) => {
+            let className = '';
+            
+            // Добавляем класс для отмененных чеков
+            if (record.status === 'cancelled') {
+              className += 'cancelled-receipt';
+            }
+            
+            // Добавляем класс для безналичной оплаты
+            const hasNonCashPayment = record.payments && record.payments.some(p => p.method !== 'cash');
+            if (hasNonCashPayment) {
+              className += (className ? ' ' : '') + 'non-cash-payment';
+            }
+            
+            return className;
+          }}
+          expandable={{
+            expandedRowRender: expandedRowRender,
+            expandRowByClick: true,
+            showExpandColumn: false
+          }}
+          columns={columns}
+          pagination={{
+            pageSize: pageSize,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total) => `Всего ${total} чеков`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onShowSizeChange: handlePageSizeChange,
+          }}
+          size="small"
+          scroll={{ x: 'max-content' }}
+        />
       </Card>
 
       <style>
@@ -4073,11 +3682,24 @@ const Receipts: React.FC = () => {
       >
         <Form form={form} layout="vertical">
           <Row gutter={16}>
-
-                          <Col span={24}>
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h4 style={{ margin: 0 }}>Способы оплаты</h4>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="Статус чека"
+                initialValue="new"
+                rules={[{ required: true, message: 'Выберите статус' }]}
+              >
+                <Select placeholder="Выберите статус">
+                  <Option key="new" value="new">Новый</Option>
+                  <Option key="completed" value="completed">Завершен</Option>
+                  <Option key="cancelled" value="cancelled">Отменен</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ margin: 0 }}>Способы оплаты</h4>
                   <Button
                     type="dashed"
                     onClick={handleAddPayment}
@@ -4981,44 +4603,6 @@ const Receipts: React.FC = () => {
               </div>
             );
           })()}
-        </Form>
-      </Modal>
-
-      {/* Модальное окно отката */}
-      <Modal
-        title="Откат клиенту"
-        open={isRefundModalVisible}
-        onOk={handleRefundOk}
-        onCancel={() => setIsRefundModalVisible(false)}
-        width={700}
-      >
-        <Form form={refundForm} layout="vertical">
-          <Form.Item
-            name="amount"
-            label="Сумма отката"
-            rules={[{ required: true, message: 'Введите сумму отката' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              step={1}
-              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value: string | undefined) => parseFloat(value?.replace(/[^\d.]/g, '') || '0')}
-            />
-          </Form.Item>
-          <Form.Item
-            name="clientName"
-            label="Имя клиента"
-            rules={[{ required: true, message: 'Введите имя клиента' }]}
-          >
-            <Input placeholder="Введите имя клиента" />
-          </Form.Item>
-          <Form.Item
-            name="notes"
-            label="Примечания"
-          >
-            <Input.TextArea rows={4} placeholder="Дополнительная информация" />
-          </Form.Item>
         </Form>
       </Modal>
     </div>

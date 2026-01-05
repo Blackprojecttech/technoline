@@ -26,9 +26,9 @@ export const initializeProductEvents = () => {
   // Список возможных API URL
   const apiUrls = [
     import.meta.env.VITE_API_URL,
-      'http://192.168.50.69:5000/api',
-  'https://technohubstore.net/api',
-    'https://admin.technohubstore.net/api'
+    'http://192.168.50.69:5002/api',
+    'http://localhost:5002/api',
+    'https://technoline-api.loca.lt/api'
   ].filter(Boolean);
 
   const token = localStorage.getItem('admin_token');
